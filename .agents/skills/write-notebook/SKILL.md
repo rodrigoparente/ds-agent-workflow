@@ -33,14 +33,14 @@ Implement the approved spec `specs/<NN-name>.md` as a clean, self-contained jupy
    - **No scope creep:** Remove metrics, models, or explorations not requested in the spec.
    - **Built-ins over custom logic:** Replace custom loops or wrappers with standard pandas, numpy, PySpark, or scikit-learn calls.
    - **No premature abstraction:** Inline single-use helper functions.
-5. **Format, validate & sync:**
-   Run the notebook validator to enforce formatting, AST structural rules, code-line budgets, and package installs, and sync the `.ipynb` file:
+5. **Static format, validate & sync (DO NOT execute the code):**
+   Run ONLY the static notebook validator to enforce formatting, AST structural rules, code-line budgets, and package installs, and sync the `.ipynb` file:
    ```bash
    uv run python .agents/tools/check_notebook.py jupytext/<NN-name>.py
    ```
-   Resolve any warnings or errors reported.
-6. **User Execution Handoff (STRICT: Agent NEVER executes notebooks):**
-   - **The agent must NEVER run or execute the notebook** (no `jupyter nbconvert --execute`, no background execution, no test scripts). The user is always in complete control of running code.
-   - Inform the user that the notebook has been formatted and synced to `notebooks/<NN-name>.ipynb`.
-   - Remind the user to open Jupyter Lab via `uv run jupyter lab`, run the notebook, inspect the outputs, and give feedback.
-   - Ask: *"Please run `notebooks/<NN-name>.ipynb` and let me know if you want to make any adjustments, add/remove steps, or proceed to report generation."*
+   *(If writing a standalone script in `scripts/<NN-name>.py`, run `uv run ruff format scripts/<NN-name>.py && uv run ruff check scripts/<NN-name>.py`).*
+   Resolve any static warnings or errors reported.
+6. **User Execution Handoff (STRICT: Agent NEVER executes code):**
+   - **The agent must NEVER run or execute the notebook or script**—no `python jupytext/<NN-name>.py`, no `python scripts/<NN-name>.py`, no `python -c`, no `jupyter nbconvert --execute`, and no "quick test runs" to see if the code works. You are a copilot; the user is always in 100% control of executing code.
+   - Inform the user that the code has been statically checked and synced to `notebooks/<NN-name>.ipynb` (or saved to `scripts/<NN-name>.py`).
+   - Stop calling tools and ask: *"Please run `notebooks/<NN-name>.ipynb` in Jupyter Lab (or `scripts/<NN-name>.py`) and let me know if you want to make any adjustments, add/remove steps, or proceed to report generation."*

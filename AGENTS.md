@@ -6,7 +6,7 @@ We follow a collaborative, human-in-the-loop workflow: **Research (optional) →
 - **Flexible & Intuitive:** You do not need to use rigid magic words. Saying "I want to know more about X", "Let's explore X", "Can we build X?", or "How would we do X?" naturally routes to the right skill (Research, Spec, or Code).
 - **Interactive First, Never Robotic:** The agent is an interactive collaborative partner—not an automated batch script. It discusses ideas, asks clarifying questions, presents trade-offs, and confirms direction before making unilateral assumptions.
 - **Spec First:** Every piece of work begins with an agreed spec in `specs/` so context is clear, documented, and easy to evolve.
-- **User in the Driver's Seat (Execution):** The agent **never executes notebooks or scripts autonomously**. The agent writes/updates code and verifies formatting with `check_notebook.py`. The user runs the notebook in Jupyter Lab (`uv run jupyter lab`), reviews results, and directs adjustments.
+- **User in the Driver's Seat (STRICT Execution Ban):** The agent is a **code copilot, never an execution engine**. The agent **NEVER executes notebooks (`jupytext/*.py`, `notebooks/*.ipynb`), scripts (`scripts/*.py`), or inline Python (`python -c`)**—not even "just to test if the code works." The agent only writes/edits code and runs static checks (`check_notebook.py` / `ruff`). The user **always** runs the code themselves in Jupyter Lab or their terminal.
 - **No Forced Goals:** Exploratory data analysis (EDA), data pipelines, prototypes, and open-ended investigations without fixed metrics are fully supported.
 - **Start Simple:** Establish the simplest working solution first, adding complexity only when data or user requirements justify it.
 
@@ -53,7 +53,10 @@ data/                               cached local data (git-ignored)
 - **Engage and Clarify:** Don't rush into full implementation silently. Present clear trade-offs and options via the dialog box when requirements are genuinely open-ended.
 - **Interactive Presentations:** Never generate a slide deck in isolation. Converse with the user via dialog box when aligning on the target audience (executives, product, engineering) and narrative angle before drafting.
 - **One Step at a Time:** Complete the specific step requested, summarize status in chat, and wait for the user. Do not execute subsequent workflow steps without user confirmation.
-- **User Owns Execution:** Never execute notebooks headlessly (`nbconvert`, background python execution) to produce outputs. Stop after syncing the code and ask the user to run the notebook.
+- **User Owns Execution (Zero Autonomous Code Runs):**
+  - **NEVER run project code:** Never execute `python jupytext/...`, `python scripts/...`, `python -c ...`, `jupyter nbconvert --execute`, `jupyter execute`, or any command that runs data loading, analysis, or modeling code—even as a "smoke test" or "verification step."
+  - **Static checks only:** Verify code strictly via static formatting and AST checks (`uv run python .agents/tools/check_notebook.py jupytext/<NN-name>.py` or `uv run ruff check`).
+  - **Stop and hand off:** Immediately after writing and statically checking the code, stop calling tools and ask the user to run it.
 - **Concise Chat Outputs:** Keep chat responses focused and readable. Avoid dumping entire multi-page slide decks or massive logs into chat—provide high-level summaries and link directly to markdown documents (`slides/<name>.md`, `reports/<name>.md`).
 - **Transparent Assumptions:** Every metric, data filter, and decision not explicitly specified by the user is documented under "Assumptions" for user confirmation.
 
@@ -68,8 +71,14 @@ Follow a minimal-code ladder:
 
 ## Core Commands
 
+### User Commands (Run by the User)
 - **Environment setup:** `uv sync`
-- **Jupyter Lab:** `uv run jupyter lab`
-- **Verify & sync notebook:** `uv run python .agents/tools/check_notebook.py jupytext/<name>.py`
-- **Summarize run outputs:** `uv run python .agents/tools/nb_summary.py notebooks/<name>.ipynb`
+- **Launch Jupyter Lab:** `uv run jupyter lab`
+- **Run standalone script:** `uv run python scripts/<name>.py`
+
+### Agent Allowed Operations & CLI Tools
+- **File & Directory Operations (Allowed):** Reading, writing, editing, and listing project files (`specs/`, `jupytext/`, `scripts/`, `reports/`, `slides/`, `research/`) and running static linters (`ruff check`, `ruff format`) are always allowed. *(Never read/edit `notebooks/*.ipynb` directly—use `jupytext/*.py` and `nb_summary.py`).*
+- **Static check & sync notebook (does NOT execute code):** `uv run python .agents/tools/check_notebook.py jupytext/<NN-name>.py`
+- **Read executed notebook outputs (after user runs it):** `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
+- **Compile PowerPoint slide deck:** `uv run python scripts/build_<NN-name>_deck.py`
 - **Fetch report export skills on-demand:** `uv run python .agents/tools/fetch_skill.py <docx|pdf>`
