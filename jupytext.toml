@@ -1,0 +1,2 @@
+# Pairs jupytext/<name>.py (source, tracked by git) with notebooks/<name>.ipynb (what you run, git-ignored).
+formats = "notebooks///ipynb,jupytext///py:percent"

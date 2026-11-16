@@ -1,0 +1,30 @@
+[project]
+name = "ds-project"
+version = "0.1.0"
+description = "Tooling for the notebooks. Each notebook installs its own packages with %pip."
+requires-python = ">=3.11"
+dependencies = [
+    "jupyterlab",
+    "jupytext",     # keeps notebook.py and notebook.ipynb in sync
+    "pip",          # so %pip works inside a uv environment
+    "python-pptx",  # used by make-presentation (deck_components.py)
+    "pillow",       # image aspect ratio sizing in deck_components.py
+]
+
+[dependency-groups]
+dev = ["ruff"]
+# optional tools used by on-demand docx and pdf export skills: `uv sync --group docs`
+docs = ["defusedxml", "lxml", "pypdf", "pdfplumber", "pdf2image", "reportlab"]
+
+[tool.ruff]
+line-length = 100
+builtins = ["spark", "sc", "display"]  # provided by Spark notebook environments
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C90", "SIM"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.per-file-ignores]
+"jupytext/*.py" = ["E402"]
