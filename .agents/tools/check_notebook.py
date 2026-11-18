@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Format, check and sync an experiment notebook (jupytext percent .py file).
 
-Usage: python .agents/tools/check_notebook.py jupytext/<name>.py [more.py ...]
+Usage: python .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
 Runs ruff format, enforces the size/documentation budget from AGENTS.md, checks that every
-imported package is in the install cell, then syncs the .ipynb.
+imported package is in the install cell, then syncs the paired .ipynb in notebooks/.
 Prints problems and exits 1 if anything is wrong. Any tool or person can run it; Claude Code
 also runs it automatically through .claude/hooks/notebook_check.py."""
 import ast
@@ -13,9 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-MAX_LINES = 220  # max actual code lines across the whole notebook (excluding markdown, comments, SQL)
-MAX_CELL = 35  # max actual code lines per cell (excluding comments, blank lines, SQL)
-MAX_DEF_LINES = 15  # max lines for a helper function inside a notebook (move larger ones to scripts/)
+MAX_LINES = 220  # max code lines across notebook (excluding markdown, comments, SQL)
+MAX_CELL = 35  # max code lines per cell (excluding comments, blank lines, SQL)
+MAX_DEF_LINES = 15  # max lines per local helper function (move larger ones to scripts/)
 SETUP_CELLS = 2  # first two code cells (pip install, imports) need no markdown before them
 
 # import name -> pip name, when they differ
@@ -133,19 +133,9 @@ def structural_problems(text):
     return out
 
 
-def problems_in(text, path="."):
+def cell_problems(cells):
+    """Check per-cell and total code-line budgets and markdown headers."""
     out = []
-    missing = missing_installs(text, path)
-    if missing:
-        out.append(
-            f"Not in the install cell: {', '.join(missing)}. Add to `# %pip install -q ...`. "
-            "(If pip name differs from import name, add to PIP_NAME in check_notebook.py.)"
-        )
-    out += structural_problems(text)
-    text_no_sql = collapse_strings(text)
-    cells = parse_cells(text_no_sql)
-    if not cells or cells[0][0] != "md":
-        out.append("First cell must be markdown: title, overview/question, and spec link.")
     n_code = 0
     total_code_lines = 0
     for i, (kind, lines) in enumerate(cells):
@@ -158,7 +148,8 @@ def problems_in(text, path="."):
         total_code_lines += len(code_lines)
         if len(code_lines) > MAX_CELL:
             out.append(
-                f"Cell {i + 1} has {len(code_lines)} code lines (max {MAX_CELL}). Split into logical cells or simplify."
+                f"Cell {i + 1} has {len(code_lines)} code lines (max {MAX_CELL}). "
+                "Split into logical cells or simplify."
             )
         if n_code > SETUP_CELLS and cells[i - 1][0] != "md":
             out.append(
@@ -166,9 +157,25 @@ def problems_in(text, path="."):
             )
     if total_code_lines > MAX_LINES:
         out.append(
-            f"{total_code_lines} total code lines (max {MAX_LINES}). Cut scope creep or move reusable helpers to scripts/."
+            f"{total_code_lines} total code lines (max {MAX_LINES}). "
+            "Cut scope creep or move reusable helpers to scripts/."
         )
     return out
+
+
+def problems_in(text, path="."):
+    out = []
+    missing = missing_installs(text, path)
+    if missing:
+        out.append(
+            f"Not in the install cell: {', '.join(missing)}. Add to `# %pip install -q ...`. "
+            "(If pip name differs from import name, add to PIP_NAME in check_notebook.py.)"
+        )
+    out += structural_problems(text)
+    cells = parse_cells(collapse_strings(text))
+    if not cells or cells[0][0] != "md":
+        out.append("First cell must be markdown: title, overview/question, and spec link.")
+    return out + cell_problems(cells)
 
 
 def main(paths):
@@ -180,9 +187,26 @@ def main(paths):
         if r is not None and r.returncode != 0:
             problems.append("ruff:\n" + (r.stdout or r.stderr).strip())
 
-        problems += problems_in(open(path).read(), path)
+        with open(path) as f:
+            problems += problems_in(f.read(), path)
 
-        run("jupytext", "--sync", path)  # keeps the .ipynb in step with the .py (outputs preserved)
+        Path("notebooks").mkdir(parents=True, exist_ok=True)
+        sync_res = run("jupytext", "--sync", path)
+        if sync_res is None:
+            problems.append(
+                "jupytext is not installed or not found in environment (run `uv sync`)."
+            )
+        elif sync_res.returncode != 0:
+            err = (sync_res.stdout or sync_res.stderr).strip()
+            problems.append(f"jupytext --sync failed:\n{err}")
+        else:
+            p = Path(path)
+            expected_ipynb = Path("notebooks") / f"{p.stem}.ipynb"
+            if p.parent.name == "py" and not expected_ipynb.exists():
+                problems.append(
+                    f"jupytext --sync completed but {expected_ipynb} was not generated. "
+                    "Check jupytext.toml pairing."
+                )
 
         if problems:
             failed = True

@@ -4,7 +4,9 @@
       "Bash(uv run python .agents/tools/check_notebook.py:*)",
       "Bash(uv run python .agents/tools/nb_summary.py:*)",
       "Bash(uv run python .agents/tools/fetch_skill.py:*)",
-      "Bash(uv run python scripts/build_*_deck.py:*)"
+      "Bash(uv run python scripts/build_*_deck.py:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)"
     ],
     "deny": ["Read(./.env)", "Read(./.env.*)"]
   },

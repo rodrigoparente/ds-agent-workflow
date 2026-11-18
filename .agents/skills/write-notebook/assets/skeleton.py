@@ -24,11 +24,12 @@ ROOT = next(
     (p for p in [Path.cwd(), *Path.cwd().parents] if (p / "pyproject.toml").exists()), Path.cwd()
 )
 DATA = ROOT / "data"
-FIGURES = ROOT / "figures"
+FIGURES = ROOT / "docs" / "figures"
+REFRESH_DATA = False  # set True when ## Data & Inputs changes in an iteration
 SEED = 42
 # Parameters, only if the spec lists some. Example:
 # SAMPLE_FRAC = 1.0
-FIGURES.mkdir(exist_ok=True)
+FIGURES.mkdir(parents=True, exist_ok=True)
 np.random.seed(SEED)
 
 # %% [markdown]
@@ -37,7 +38,7 @@ np.random.seed(SEED)
 
 # %%
 path = DATA / f"{NAME}.parquet"
-if path.exists():
+if path.exists() and not REFRESH_DATA:
     df = pd.read_parquet(path)
 else:
     # Query source data (e.g. SQL, BigQuery/Spark, or load raw file)

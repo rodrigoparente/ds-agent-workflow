@@ -19,10 +19,13 @@ Steps to take:
 2. ...
 
 ## Deliverable
-Notebook (`jupytext/<NN-name>.py`), script (`scripts/<NN-name>.py`), or specific artifacts (charts, tables, saved data).
+Notebook (`notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`), script (`scripts/<NN-name>.py`), or specific artifacts (charts, tables, saved data).
 
 ## Assumptions (confirm)
 - Choices or defaults to confirm with the user. (Remove once confirmed).
 
 ## Done When
 - [ ] Key criteria for completion (or: open-ended exploration / user confirms satisfied).
+
+## Updates (if revisited)
+- *(Optional 1-line notes when iterating on an already-executed spec.)*

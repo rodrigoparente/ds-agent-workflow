@@ -16,26 +16,28 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 
 1. **Interactive First, Never Robotic:** The AI assistant is a thoughtful collaborative partner—not an automated script. It engages in conversation, uses interactive dialog choices (`ask_question`) to clarify open-ended requirements, surfaces trade-offs, and aligns on direction before writing code.
 2. **User in the Driver's Seat (Execution Control):** The agent writes, formats, and syncs clean code, but **the data scientist always runs the code**. The agent never executes notebooks autonomously headlessly. You inspect outputs in Jupyter Lab, validate results, and guide iterations.
-3. **Flexible & Spec-First:** Works naturally for exploratory data analysis (EDA), data pipelines, prototypes, and modeling experiments alike—no forced metrics when doing open-ended exploration. Every initiative begins with a lightweight agreement in `specs/<NN-name>.md`.
-4. **Clean Code & Git-Friendly Notebooks:** Code is kept flat, readable, and minimal—enforced via AST structural checks (no classes, no `try/except` bloat, short helper functions) and code-only budgets (max 220 code lines per notebook, 35 code lines per cell, excluding markdown, comments, and SQL). Jupytext pairs clean `.py` files in `jupytext/` with `.ipynb` in `notebooks/`. Git tracks the readable python code; messy binary outputs stay local and git-ignored.
+3. **Flexible & Spec-First:** Works naturally for exploratory data analysis (EDA), data pipelines, prototypes, and modeling experiments alike—no forced metrics when doing open-ended exploration. Every initiative begins with a lightweight agreement in `specs/<NN-name>.md`, and any iteration updates the spec first.
+4. **Clean Code & Git-Friendly Notebooks:** Code is kept flat, readable, and minimal—enforced via AST structural checks (no classes, no `try/except` bloat, short helper functions) and code-only budgets (max 220 code lines per notebook, 35 code lines per cell, excluding markdown, comments, and SQL). Jupytext pairs clean `.py` files in `notebooks/py/` with `.ipynb` in `notebooks/`. Git tracks the readable python code; messy binary outputs stay local and git-ignored.
 5. **Verified Evidence & Executive Storytelling:** Experiment reports are strictly verified against actual execution outputs. Presentations are built with `deck_components.py` around executive narrative arcs with complete presenter notes embedded for PowerPoint Presenter View.
 
 ---
 
 ## Repository Layout
 
-Every initiative is organized with a two-digit prefix (`01-name`, `02-name`), keeping all related files easy to find (`ls */01-*`):
+Every initiative is organized with a two-digit prefix (`01-name`, `02-name`) inside a clean, 5-folder layout:
 
 ```
-specs/       <NN-name>.md           spec for each initiative (draft → approved → executed)
-jupytext/    <NN-name>.py           notebook source of truth (flat, clean, git-tracked)
-notebooks/   <NN-name>.ipynb        executed notebook outputs (run by user, git-ignored)
-scripts/     <name>.py              standalone scripts, pipelines, helper modules
-reports/     <NN-name>.md           results and analysis summary (plus .docx / .pdf on request)
-slides/      <NN-name>.md           executive slide outline and deck (.pptx)
-figures/     <NN-name>_<what>.png   saved charts and visualizations
-research/    <topic>.md             optional research briefs
-data/                               cached local data (git-ignored)
+specs/                        <NN-name>.md (authoritative specs, OpenSpec-style)
+notebooks/
+  ├── <NN-name>.ipynb         executed notebook outputs (run by user, git-ignored)
+  └── py/<NN-name>.py         notebook source of truth (flat, clean, git-tracked)
+docs/
+  ├── reports/<NN-name>.md    results and analysis summary (plus .docx / .pdf on request)
+  ├── slides/<NN-name>.md     executive slide outline and deck (.pptx)
+  ├── research/<topic>.md     optional research briefs
+  └── figures/<NN-name>_*.png saved charts and visualizations
+scripts/                      standalone scripts, pipelines, helper modules, deck builders
+data/                         cached local data (git-ignored)
 ```
 
 ---
@@ -44,12 +46,12 @@ data/                               cached local data (git-ignored)
 
 | Step | Skill | What Happens | Owner |
 |---|---|---|:---:|
-| **1. Research (Optional)** | `researcher` | Explores literature (arXiv), benchmark datasets, and open-source approaches. Triggers naturally on *"I want to know more about X"* or *"Explore algorithms for X"*. Produces `research/<topic>.md`. | Agent |
+| **1. Research (Optional)** | `researcher` | Explores literature (arXiv), benchmark datasets, and open-source approaches. Triggers naturally on *"I want to know more about X"* or *"Explore algorithms for X"*. Produces `docs/research/<topic>.md`. | Agent |
 | **2. Spec** | `experiment-spec` | Clarifies scope, data sources, and approach (for EDA, pipelines, or experiments). Converses to resolve choices, then writes `specs/<NN-name>.md` (`Status: draft` $\to$ `Status: approved`). | Collaborative |
-| **3. Code** | `write-notebook` | Implements the spec as a clean Jupytext file in `jupytext/<NN-name>.py` (or `scripts/`). Validates formatting, line budgets, and syncs `notebooks/<NN-name>.ipynb`. | Agent |
+| **3. Code** | `write-notebook` | Implements the spec as a clean Jupytext file in `notebooks/py/<NN-name>.py` (or `scripts/`). Validates formatting, line budgets, and auto-syncs `notebooks/<NN-name>.ipynb`. | Agent |
 | **4. Execution** | User runs code | You open Jupyter Lab (`uv run jupyter lab`), run the notebook cells, inspect outputs, and direct any adjustments or additions. | **User (Always)** |
-| **5. Report** | `experiment-report` | Inspects executed cell outputs via `nb_summary.py`, verifies every stated metric against actual outputs, writes `reports/<NN-name>.md`, and updates the spec to `Status: executed`. | Agent |
-| **6. Presentation** | `make-presentation` | Converses to align on audience and narrative angle, drafts `slides/<NN-name>.md`, and compiles a widescreen `slides/<NN-name>.pptx` via `deck_components.py` with embedded speaker notes. | Collaborative & Agent |
+| **5. Report** | `experiment-report` | Inspects executed cell outputs via `nb_summary.py`, verifies every stated metric against actual outputs, writes `docs/reports/<NN-name>.md`, and updates the spec to `Status: executed`. | Agent |
+| **6. Presentation** | `make-presentation` | Converses to align on audience and narrative angle, drafts `docs/slides/<NN-name>.md`, and compiles a widescreen `docs/slides/<NN-name>.pptx` via `deck_components.py` with embedded speaker notes. | Collaborative & Agent |
 
 ---
 
@@ -57,17 +59,17 @@ data/                               cached local data (git-ignored)
 
 Every tool and constraint in this repository solves a specific failure mode of AI-assisted data science:
 
-### 1. Why Jupytext (`jupytext/*.py` $\leftrightarrow$ `notebooks/*.ipynb`)?
+### 1. Why Jupytext (`notebooks/py/*.py` $\leftrightarrow$ `notebooks/*.ipynb`)?
 Raw `.ipynb` files are massive JSON documents packed with execution metadata, HTML tables, and base64-encoded PNG images. They produce unreadable Git diffs, frequent merge conflicts, and easily corrupt when edited directly by LLMs.
-- **How it works here:** The agent only edits clean, human-readable `# %%` percent-format Python files in `jupytext/<NN-name>.py` (tracked by Git). `jupytext --sync` automatically mirrors code changes into `notebooks/<NN-name>.ipynb` (git-ignored) while preserving your executed cell outputs in Jupyter Lab.
+- **How it works here:** The agent only edits clean, human-readable `# %%` percent-format Python files in `notebooks/py/<NN-name>.py` (tracked by Git). `jupytext --sync` automatically mirrors code changes into `notebooks/<NN-name>.ipynb` (git-ignored) while preserving your executed cell outputs in Jupyter Lab.
 
 ### 2. Why `nb_summary.py` (and Hook Guards) Instead of Reading `.ipynb`?
 When an agent reads an executed `.ipynb` file directly, a single matplotlib chart or large dataframe dump can flood the LLM context window with tens of thousands of tokens of base64 strings.
-- **How it works here:** `.agents/tools/nb_summary.py` parses the executed notebook and outputs a compact, token-efficient transcript of markdown cells, code headers, and truncated text/table outputs (noting `[image output]` instead of dumping binary strings). In Claude Code, `.claude/hooks/guard.py` actively blocks direct `.ipynb` reads/edits so the agent always uses `jupytext/*.py` and `nb_summary.py`.
+- **How it works here:** `.agents/tools/nb_summary.py` parses the executed notebook and outputs a compact, token-efficient transcript of markdown cells, code headers, and truncated text/table outputs (noting `[image output]` instead of dumping binary strings). In Claude Code, `.claude/hooks/guard.py` actively blocks direct `.ipynb` reads/edits so the agent always uses `notebooks/py/*.py` and `nb_summary.py`.
 
 ### 3. Why `ruff` + `check_notebook.py` (Smart Structural Guardrails)?
 Left unchecked, LLMs tend to over-engineer data science notebooks: writing 500-line scripts, wrapping one-off pandas calls in classes or `try/except` blocks, and forgetting to add newly imported libraries to the install cell. At the same time, overly tight line limits (like 20 lines/cell) backfire by forcing ugly one-liners on readable PySpark chains and multi-panel `matplotlib` charts.
-- **How it works here:** Every edit to `jupytext/<NN-name>.py` runs through `.agents/tools/check_notebook.py`, which enforces:
+- **How it works here:** Every edit to `notebooks/py/<NN-name>.py` runs through `.agents/tools/check_notebook.py`, which enforces:
   - **Ruff formatting, simplification & complexity (`pyproject.toml`):** Auto-formats code, sorts imports, catches bugs and redundant patterns (`E`, `F`, `I`, `B`, `SIM`), caps cyclomatic complexity (`C901`, `max-complexity = 8`), and pre-declares Spark/notebook builtins (`spark`, `sc`, `display`).
   - **Code-only size budgets:** Counts *only* actual Python code lines—never penalizing markdown explanations, comments, blank lines, or triple-quoted SQL strings. Caps notebooks at **220 code lines total** and **35 code lines per cell**, leaving plenty of room for vertical PySpark chains and plots while stopping monolithic bloat.
   - **AST structural checks:** Uses Python's AST to block `class` definitions, block defensive `try/except` wrappers (so notebook errors fail transparently), cap helper functions (`def`) at **15 lines** (longer reusable logic belongs in `scripts/`), and require a 1–2 sentence markdown explanation before every analysis cell.
@@ -84,7 +86,7 @@ Real data lakes contain dozens or hundreds of tables. Dumping every table's full
 ### 6. Why Verified Reports & Programmatic Slides (`deck_components.py`)?
 Two common last-mile failures with LLMs are (1) subtle numerical hallucinations when summarizing results, and (2) messy, overlapping text boxes when generating PowerPoint slides from scratch.
 - **How it works here:**
-  - `experiment-report` enforces a mandatory verification pass tracing every claim and metric in `reports/<NN-name>.md` back to its exact cell output in `nb_summary.py`.
+  - `experiment-report` enforces a mandatory verification pass tracing every claim and metric in `docs/reports/<NN-name>.md` back to its exact cell output in `nb_summary.py`.
   - `deck_components.py` provides opinionated, pre-aligned `python-pptx` building blocks (unified section roadmaps, stat + story cards, bento splits, aspect-ratio-safe charts, and presenter notes) so generated `.pptx` decks look cohesive every time.
 
 ---
@@ -144,9 +146,9 @@ Optional dependencies for Word/PDF export:
 
 - **Verify & Sync Notebooks:**
   ```bash
-  uv run python .agents/tools/check_notebook.py jupytext/<name>.py
+  uv run python .agents/tools/check_notebook.py notebooks/py/<name>.py
   ```
-  Runs `ruff` formatting, enforces line/cell budgets, checks imports, and syncs `.ipynb`.
+  Runs `ruff` formatting, enforces line/cell budgets, checks imports, and auto-syncs `notebooks/<name>.ipynb`.
 
 - **Summarize Run Outputs:**
   ```bash

@@ -95,17 +95,17 @@ A complete presentation typically progresses through 4 core sections, adapting n
 ## 3. Process
 
 ### Step 1: Align on Narrative & Scope (Converse First)
-1. Read `reports/<NN-name>.md` (and `specs/<NN-name>.md` if helpful for context).
+1. Read `docs/reports/<NN-name>.md` (and `specs/<NN-name>.md` if helpful for context).
 2. Converse with the user via the interactive dialog box (`ask_question`) to align on target audience (Executive, Product, or Technical) and the primary narrative angle or decision ask.
 
-### Step 2: Draft the Outline in `slides/<NN-name>.md`
-1. Copy or adapt `assets/outline-template.md` to `slides/<NN-name>.md` following the **One Idea + One Supporting Layout** rule.
+### Step 2: Draft the Outline in `docs/slides/<NN-name>.md`
+1. Copy or adapt `assets/outline-template.md` to `docs/slides/<NN-name>.md` following the **One Idea + One Supporting Layout** rule.
 2. Ensure every content slide specifies its section kicker (`01 / CONTEXT`, `02 / METHODOLOGY`, etc.) and layout component.
 3. Populate detailed **Presenter Guides** for every slide.
 
 ### Step 3: Present Concise Summary in Chat
 - Share a high-level summary of the narrative arc and slide count in chat.
-- Provide a direct link to `slides/<NN-name>.md` for the user to review.
+- Provide a direct link to `docs/slides/<NN-name>.md` for the user to review.
 - Wait for user confirmation before building the `.pptx` deck.
 
 ### Step 4: Build the Deck Using `deck_components.py`
@@ -121,7 +121,7 @@ A complete presentation typically progresses through 4 core sections, adapting n
    - `add_double_stat(slide, stat1, stat2)` — Two large side-by-side metric cards.
    - `add_chart_element(slide, image_path, takeaways)` — Aspect-ratio-safe centered figure with an optional takeaway card underneath.
    - `add_clean_table(slide, headers, rows, col_widths)` — Minimalist alternating-row table supporting `(text, "success"|"warning"|"danger")` status tags.
-3. Run the builder script (`uv run python scripts/build_<NN-name>_deck.py`) to generate `slides/<NN-name>.pptx`.
+3. Run the builder script (`uv run python scripts/build_<NN-name>_deck.py`) to generate `docs/slides/<NN-name>.pptx`.
 
 ---
 
@@ -246,7 +246,7 @@ s8 = create_base_slide(
 )
 add_chart_element(
     s8,
-    image_path="figures/01-name_summary.png",
+    image_path="docs/figures/01-name_summary.png",
     takeaways=[("Key Takeaway:", "One-sentence interpretation of the visual pattern.")],
 )
 
@@ -267,5 +267,6 @@ add_clean_table(
     ],
 )
 
-prs.save("slides/01-name.pptx")
+Path("docs/slides").mkdir(parents=True, exist_ok=True)
+prs.save("docs/slides/01-name.pptx")
 ```

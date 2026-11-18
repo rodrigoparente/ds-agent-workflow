@@ -13,7 +13,8 @@ if not path:
     sys.exit(__doc__)
 show_code = "--code" in args
 limit = int(args[args.index("--max") + 1]) if "--max" in args else 1500
-nb = json.load(open(path))
+with open(path) as f:
+    nb = json.load(f)
 
 
 def text(x):

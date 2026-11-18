@@ -29,11 +29,17 @@ No artificial goals or formal metrics are required—it is completely valid to d
    Present the draft spec summary in chat, highlighting key assumptions and trade-offs.
    Invite the user to confirm or adjust in chat. Once confirmed by the user, update status to `Status: approved`.
 
-## Iterating vs. New Specs
+## Iterating vs. New Specs (STRICT Spec-First Rule)
 
-- **Refining active work:** If the user asks to modify, adjust, or fix the current work (e.g. changing steps, refining code, fixing bugs), update the **existing spec** `specs/<NN-name>.md` and the corresponding code.
-- **Starting a new direction:** Once work has been run and reported (`Status: executed`), start a **new spec** `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>`.
+- **Never edit code without updating the spec first:** Whenever the user asks to modify, fix, or add steps to an existing experiment (`01-sales-eda`), **update `specs/<NN-name>.md` FIRST** before touching `notebooks/py/<NN-name>.py`.
+- **Iterating on an existing experiment (`<NN-name>`):**
+  - Use this when fixing bugs, adjusting filters/features, or adding follow-up charts/steps to the *same* question/dataset—even if `Status` is already `executed`.
+  - Update the relevant sections of `specs/<NN-name>.md`, add a 1-line note under `## Updates` (optional, minimal), and set `Status: approved` so it is clear the spec has unexecuted changes.
+  - If `## Data & Inputs` changed, note that cached data (`data/<NN-name>.parquet`) must be refreshed (`REFRESH_DATA = True`).
+- **Starting a new experiment (`<(NN+1)-name>`):**
+  - Use this when starting a new phase, testing a different modeling family, or investigating a separate question.
+  - Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>`.
 
 ## Spec Lifecycle
 
-`Status: draft` (drafting) → `Status: approved` (ready for code) → `Status: executed` (executed and summarized in report).
+`Status: draft` (drafting) → `Status: approved` (ready for code / has unexecuted updates) → `Status: executed` (run complete and summarized in `docs/reports/<NN-name>.md`).

@@ -1,6 +1,6 @@
 # <NN-name>
 
-Spec: specs/<NN-name>.md · Code: jupytext/<NN-name>.py (or scripts/<NN-name>.py) · Date: YYYY-MM-DD
+Spec: specs/<NN-name>.md · Code: notebooks/py/<NN-name>.py (or scripts/<NN-name>.py) · Date: YYYY-MM-DD
 
 ## TL;DR
 - **Summary:** ... (key finding, observation, or what was built)
@@ -29,4 +29,4 @@ Data quality, sample size, edge cases, or assumptions to keep in mind.
 1. ...
 
 ## Reproduce
-Run `notebooks/<NN-name>.ipynb` (paired with `jupytext/<NN-name>.py`) or `scripts/<NN-name>.py`.
+Run `notebooks/<NN-name>.ipynb` (paired with `notebooks/py/<NN-name>.py`) or `scripts/<NN-name>.py`.

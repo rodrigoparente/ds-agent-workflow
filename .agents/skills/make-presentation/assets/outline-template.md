@@ -145,7 +145,7 @@ Continuous orientation is maintained via the **Unified Roadmap** (`add_roadmap_s
 - **Title:** <Action headline summarizing the pattern shown in the chart>
 - **Subtitle:** <Chart context or sample size>
 - **Layout Component (`add_chart_element`):**
-  - **Figure:** `figures/<NN-name>_<what>.png`
+  - **Figure:** `docs/figures/<NN-name>_<what>.png`
   - **Takeaway Card Below Chart:** **<Key Takeaway>:** <1-sentence explanation of the visual trend or threshold.>
 - **Presenter Guide:**
   - *What to say aloud:* "<Guide the audience's eyes to the axes and the main pattern in the figure.>"

@@ -14,14 +14,11 @@ __pycache__/
 .claude/settings.local.json
 
 # Generated workflow & project outputs (template repo)
+uv.lock
 data/
-figures/
-jupytext/
+docs/
 notebooks/
-reports/
-research/
 scripts/
-slides/
 specs/
 *.ipynb
 ~$*
