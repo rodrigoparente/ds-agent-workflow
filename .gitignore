@@ -1,4 +1,4 @@
-# Virtual environments & caches
+# Environments & caches
 .venv/
 venv/
 node_modules/
@@ -8,16 +8,20 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 
-# Executed notebooks, local data & Office lock files
-*.ipynb
-data/
-~$*
-
 # Secrets & local agent settings
 .env
 .env.*
 .claude/settings.local.json
 
-# On-demand document export skills
-.agents/skills/docx/
-.agents/skills/pdf/
+# Generated workflow & project outputs (template repo)
+data/
+figures/
+jupytext/
+notebooks/
+reports/
+research/
+scripts/
+slides/
+specs/
+*.ipynb
+~$*
