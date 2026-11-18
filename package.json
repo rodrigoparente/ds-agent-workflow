@@ -1,7 +1,0 @@
-{
-  "private": true,
-  "description": "Node tools used by the optional docx report export skill. Run `npm install` if exporting Word docs.",
-  "dependencies": {
-    "docx": "^9.8.1"
-  }
-}

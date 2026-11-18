@@ -14,7 +14,7 @@ dependencies = [
 [dependency-groups]
 dev = ["ruff", "pytest"]
 # optional tools used by on-demand docx and pdf export skills: `uv sync --group docs`
-docs = ["defusedxml", "lxml", "pypdf", "pdfplumber", "pdf2image", "reportlab"]
+docs = ["python-docx", "defusedxml", "lxml", "pypdf", "pdfplumber", "pdf2image", "reportlab"]
 
 [tool.ruff]
 line-length = 100
@@ -28,7 +28,11 @@ max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
 "notebooks/py/*.py" = ["E402", "E501"]
-"scripts/*.py" = ["E402"]
-"apps/*.py" = ["E402"]
-"tests/*.py" = ["E402"]
+"scripts/*.py" = ["E402", "E501"]
+"apps/*.py" = ["E402", "E501"]
+"tests/*.py" = ["E402", "E501"]
 ".agents/skills/make-presentation/assets/deck_components.py" = ["B008", "C901"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "scripts"]

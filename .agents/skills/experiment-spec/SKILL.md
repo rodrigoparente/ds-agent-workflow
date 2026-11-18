@@ -39,6 +39,8 @@ No artificial goals or formal metrics are required—it is completely valid to d
 - **Starting a new initiative (`<(NN+1)-name>`):**
   - Use this when starting a new phase, testing a distinct modeling approach, investigating a separate question, or operationalizing prior work into a standalone script (`scripts/`), application, or service (`apps/`).
   - Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>` and reference any reused data, models (`models/`), or helper modules (`scripts/`).
+- **Cross-initiative feedback loops (`<(NN+1)-name>` → `<NN-name>`):**
+  - When testing a downstream script, app, or test suite exposes a flaw or missing requirement in an upstream initiative, update the upstream spec (`specs/<NN-name>.md`) and upstream code first, then update the downstream spec (`specs/<(NN+1)-name>.md`) and downstream code.
 
 ## Spec Lifecycle
 

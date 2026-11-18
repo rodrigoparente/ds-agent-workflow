@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Claude Code PostToolUse hook: run .agents/tools/check_notebook.py on an edited notebooks/py/*.py.
 Exit 2 sends the problems back to Claude so it fixes them."""
+
 import json
 import os
 import subprocess

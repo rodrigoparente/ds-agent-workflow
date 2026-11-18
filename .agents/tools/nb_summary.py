@@ -4,6 +4,7 @@
 Usage: python .agents/tools/nb_summary.py notebooks/x.ipynb [--code] [--max 1500]
 Outputs are truncated to --max characters each; images are listed, not dumped.
 """
+
 import json
 import sys
 

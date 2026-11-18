@@ -12,9 +12,8 @@ Transforms executed notebook or script outputs into a concise, verified summary 
 1. **Verify inputs:**
    Read `specs/<NN-name>.md`.
    Extract run outputs:
-   - *For notebooks:* Run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`.
-   - **If no outputs are present:** STOP and ask the user to execute the notebook in Jupyter Lab (`uv run jupyter lab`) first (do not execute it yourself; see `AGENTS.md`).
-   - *For scripts, apps, or models:* Review execution outputs, test results (`tests/`), saved artifacts (`models/`, `data/`), or figures (`docs/figures/`).
+   - *For notebooks (`notebooks/<NN-name>.ipynb`):* Run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`. If no outputs are present, STOP and ask the user to execute the notebook in Jupyter Lab (`uv run jupyter lab`) first (do not execute it yourself; see `AGENTS.md`).
+   - *For scripts, apps, or services (`scripts/`, `apps/`):* Run `uv run pytest` (if unit/integration tests exist in `tests/`) and review user-shared execution outputs, saved artifacts (`models/`, `data/`), or figures (`docs/figures/`).
 2. **Draft or update report:**
    Populate `assets/report-template.md` and save to `docs/reports/<NN-name>.md` (when updating an existing report after a new iteration, re-verify all sections against the latest outputs):
    - Ground every metric, pattern, and claim directly in the actual outputs.
@@ -33,8 +32,9 @@ Transforms executed notebook or script outputs into a concise, verified summary 
    Share the TL;DR and key observations in chat with a direct link to `docs/reports/<NN-name>.md`. Mention that Word (`.docx`) or PDF versions can be generated on request, and wait for the user's direction in chat.
 6. **Optional document export:**
    If the user requests a Word or PDF version:
+   - Ensure the optional `docs` dependency group (`python-docx`, `reportlab`, etc.) is installed via `uv sync --group docs`.
    - Check if the required skill exists (`.agents/skills/docx` or `.agents/skills/pdf`). If not, download it on demand:
      ```bash
      uv run python .agents/tools/fetch_skill.py docx   # or pdf
      ```
-   - Use the downloaded Anthropic skill to compile `docs/reports/<NN-name>.docx` or `docs/reports/<NN-name>.pdf`. The markdown report remains the primary source of truth.
+   - Compile `docs/reports/<NN-name>.docx` (using `python-docx`) or `docs/reports/<NN-name>.pdf` (using `reportlab`). The markdown report remains the primary source of truth.

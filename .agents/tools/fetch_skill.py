@@ -54,24 +54,19 @@ def _extract_skill_tarball(data: bytes, skill_name: str, dest_dir: Path) -> int:
     return extracted_count
 
 
-def fetch_skill(
-    skill_name: str, force: bool = False, target_root: Path | None = None
-) -> bool:
+def fetch_skill(skill_name: str, force: bool = False, target_root: Path | None = None) -> bool:
     if target_root is None:
         target_root = Path(__file__).resolve().parent.parent / "skills"
 
     dest_dir = target_root / skill_name
     if dest_dir.exists() and (dest_dir / "scripts").exists() and not force:
         print(
-            f"Skill '{skill_name}' is already installed at {dest_dir}. "
-            "Use --force to re-download."
+            f"Skill '{skill_name}' is already installed at {dest_dir}. Use --force to re-download."
         )
         return True
 
     print(f"Downloading '{skill_name}' from {REPO_TARBALL}...")
-    req = urllib.request.Request(
-        REPO_TARBALL, headers={"User-Agent": "DS-Starter-Pack/1.0"}
-    )
+    req = urllib.request.Request(REPO_TARBALL, headers={"User-Agent": "DS-Starter-Pack/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = resp.read()
@@ -93,12 +88,8 @@ def fetch_skill(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Download skills from Anthropic repository."
-    )
-    parser.add_argument(
-        "skill", help="Name of the skill to fetch (e.g., docx, pdf)"
-    )
+    parser = argparse.ArgumentParser(description="Download skills from Anthropic repository.")
+    parser.add_argument("skill", help="Name of the skill to fetch (e.g., docx, pdf)")
     parser.add_argument(
         "--force",
         action="store_true",

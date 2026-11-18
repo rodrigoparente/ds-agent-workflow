@@ -680,20 +680,30 @@ def add_chart_element(
 ):
     """Layout: Large, centered visual chart with safe aspect ratio clearance."""
     img_path = Path(image_path)
-    if not img_path.exists():
-        return
+    if img_path.exists():
+        with Image.open(img_path) as im:
+            aspect = im.size[1] / im.size[0]
 
-    with Image.open(img_path) as im:
-        aspect = im.size[1] / im.size[0]
+        img_h = max_img_height
+        img_w = img_h / aspect
+        if img_w > width:
+            img_w = width
+            img_h = img_w * aspect
 
-    img_h = max_img_height
-    img_w = img_h / aspect
-    if img_w > width:
-        img_w = width
-        img_h = img_w * aspect
-
-    img_left = left + (width - img_w) / 2
-    slide.shapes.add_picture(str(img_path), img_left, top, width=img_w, height=img_h)
+        img_left = left + (width - img_w) / 2
+        slide.shapes.add_picture(str(img_path), img_left, top, width=img_w, height=img_h)
+    else:
+        img_h = max_img_height
+        add_card_box(slide, left, top, width, img_h, radius=CORNER_RADIUS_STANDARD)
+        tx_ph = slide.shapes.add_textbox(
+            left + Inches(0.5), top + (img_h / 2) - Inches(0.25), width - Inches(1.0), Inches(0.5)
+        )
+        p_ph = tx_ph.text_frame.paragraphs[0]
+        p_ph.text = f"Figure pending execution: {img_path.as_posix()}"
+        p_ph.alignment = PP_ALIGN.CENTER
+        p_ph.font.size = Pt(13)
+        p_ph.font.italic = True
+        p_ph.font.color.rgb = TEXT_MUTED
 
     if takeaways:
         gap = Inches(0.20)

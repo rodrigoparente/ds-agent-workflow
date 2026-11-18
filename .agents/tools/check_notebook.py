@@ -29,7 +29,7 @@ PIP_NAME = {
     "skimage": "scikit-image",
     "dotenv": "python-dotenv",
 }
-PROVIDED = {"pyspark", "IPython"}  # the notebook environment already has these
+PROVIDED = {"pyspark", "IPython", "scripts", "apps"}  # workspace & notebook builtins
 # calls that need a package which is never imported explicitly
 IMPLICIT = {".to_markdown(": "tabulate", "_parquet(": "pyarrow", "read_excel(": "openpyxl"}
 

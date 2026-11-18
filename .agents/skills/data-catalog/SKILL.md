@@ -35,16 +35,12 @@ from pyspark.sql import functions as F
 # Example: Get active users with their primary avatar
 user_profiles_df = (
     users_df.filter(F.col("is_active") == True)
-    .join(
-        images_df.filter(F.col("is_primary") == True),
-        on="user_id",
-        how="left"
-    )
+    .join(images_df.filter(F.col("is_primary") == True), on="user_id", how="left")
     .select(
         users_df["user_id"],
         users_df["username"],
         users_df["email"],
-        images_df["image_url"].alias("avatar_url")
+        images_df["image_url"].alias("avatar_url"),
     )
 )
 ```
