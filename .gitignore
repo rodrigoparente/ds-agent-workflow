@@ -15,10 +15,14 @@ __pycache__/
 
 # Generated workflow & project outputs (template repo)
 uv.lock
+apps/
 data/
 docs/
+models/
 notebooks/
 scripts/
 specs/
+tests/
 *.ipynb
+*.joblib
 ~$*

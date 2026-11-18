@@ -24,20 +24,23 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 
 ## Repository Layout
 
-Every initiative is organized with a two-digit prefix (`01-name`, `02-name`) inside a clean, 5-folder layout:
+Every initiative is organized with a two-digit prefix (`01-name`, `02-name`) inside a clean, standardized layout:
 
 ```
 specs/                        <NN-name>.md (authoritative specs, OpenSpec-style)
 notebooks/
   ├── <NN-name>.ipynb         executed notebook outputs (run by user, git-ignored)
   └── py/<NN-name>.py         notebook source of truth (flat, clean, git-tracked)
+models/                       <NN-name>.joblib (serialized model bundles, git-ignored)
+apps/                         <NN>_<name>_app.py (Streamlit) / <NN>_<name>_api.py (FastAPI)
+scripts/                      shared feature modules (*_features.py), CLIs, deck builders
+tests/                        test_<name>.py (pytest unit & FastAPI contract tests)
 docs/
   ├── reports/<NN-name>.md    results and analysis summary (plus .docx / .pdf on request)
   ├── slides/<NN-name>.md     executive slide outline and deck (.pptx)
   ├── research/<topic>.md     optional research briefs
   └── figures/<NN-name>_*.png saved charts and visualizations
-scripts/                      standalone scripts, pipelines, helper modules, deck builders
-data/                         cached local data (git-ignored)
+data/                         cached local data (<NN-name>.parquet, git-ignored)
 ```
 
 ---

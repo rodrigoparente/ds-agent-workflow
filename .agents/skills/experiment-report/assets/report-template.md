@@ -1,6 +1,6 @@
 # <NN-name>
 
-Spec: specs/<NN-name>.md · Code: notebooks/py/<NN-name>.py (or scripts/<NN-name>.py) · Date: YYYY-MM-DD
+Spec: specs/<NN-name>.md · Code: notebooks/py/<NN-name>.py (or apps/<NN>_<name>_app.py / scripts/<NN-name>.py) · Date: YYYY-MM-DD
 
 ## TL;DR
 - **Summary:** ... (key finding, observation, or what was built)

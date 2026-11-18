@@ -43,7 +43,8 @@ def collapse_strings(text):
 def run(*cmd):
     """Run a tool through uv if available, else directly. Returns None if not installed."""
     if shutil.which("uv"):
-        cmd = ("uv", "run", "--quiet") + cmd
+        sync_flag = ("--no-sync",) if Path(".venv").exists() else ()
+        cmd = ("uv", "run", *sync_flag, "--quiet") + cmd
     elif not shutil.which(cmd[0]):
         return None
     return subprocess.run(cmd, capture_output=True, text=True)
@@ -90,10 +91,15 @@ def missing_installs(text, path):
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             names.add(node.module.split(".")[0])
     need = []
+    p = Path(path).resolve()
+    proj_root = p.parents[2] if p.parent.name == "py" and len(p.parents) >= 3 else Path.cwd()
     for name in sorted(names):
         here = [
-            Path(path).parent / f"{name}.py",
+            p.parent / f"{name}.py",
             Path(name),
+            proj_root / "scripts" / f"{name}.py",
+            proj_root / "scripts" / name,
+            proj_root / name,
             Path("scripts") / f"{name}.py",
             Path("scripts") / name,
         ]
@@ -190,7 +196,9 @@ def main(paths):
         with open(path) as f:
             problems += problems_in(f.read(), path)
 
-        Path("notebooks").mkdir(parents=True, exist_ok=True)
+        p = Path(path)
+        nb_dir = p.parent.parent if p.parent.name == "py" else Path("notebooks")
+        nb_dir.mkdir(parents=True, exist_ok=True)
         sync_res = run("jupytext", "--sync", path)
         if sync_res is None:
             problems.append(
@@ -200,8 +208,7 @@ def main(paths):
             err = (sync_res.stdout or sync_res.stderr).strip()
             problems.append(f"jupytext --sync failed:\n{err}")
         else:
-            p = Path(path)
-            expected_ipynb = Path("notebooks") / f"{p.stem}.ipynb"
+            expected_ipynb = nb_dir / f"{p.stem}.ipynb"
             if p.parent.name == "py" and not expected_ipynb.exists():
                 problems.append(
                     f"jupytext --sync completed but {expected_ipynb} was not generated. "

@@ -9,10 +9,16 @@ dependencies = [
     "pip",          # so %pip works inside a uv environment
     "python-pptx",  # used by make-presentation (deck_components.py)
     "pillow",       # image aspect ratio sizing in deck_components.py
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "matplotlib",
+    "scikit-learn",
+    "joblib",
 ]
 
 [dependency-groups]
-dev = ["ruff", "pytest"]
+dev = ["ruff", "pytest", "fastapi", "pydantic", "httpx", "streamlit"]
 # optional tools used by on-demand docx and pdf export skills: `uv sync --group docs`
 docs = ["defusedxml", "lxml", "pypdf", "pdfplumber", "pdf2image", "reportlab"]
 
@@ -22,9 +28,14 @@ builtins = ["spark", "sc", "display"]  # provided by Spark notebook environments
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "C90", "SIM"]
+ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/py/*.py" = ["E402"]
+"**/notebooks/py/*.py" = ["E402", "E501"]
+"**/scripts/*.py" = ["E402"]
+"**/apps/*.py" = ["E402"]
+"**/tests/*.py" = ["E402"]
+".agents/skills/make-presentation/assets/deck_components.py" = ["B008", "C901"]

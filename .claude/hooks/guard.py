@@ -17,7 +17,7 @@ root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
 rel = os.path.relpath(os.path.abspath(path), root).replace(os.sep, "/") if path else ""
 
-if rel.startswith("notebooks/") and rel.endswith(".ipynb"):
+if (rel.startswith("notebooks/") or "/notebooks/" in rel) and rel.endswith(".ipynb"):
     print(
         "Blocked: do not open notebooks/*.ipynb directly. Edit the paired notebooks/py/*.py file; "
         "read executed outputs with .agents/tools/nb_summary.py.",
@@ -37,9 +37,9 @@ if tool_name == "Bash" and cmd:
     )
     if not any(re.search(pat, cmd) for pat in SAFE_PATTERNS):
         FORBIDDEN_PATTERNS = [
-            r"\bpython3?\b.*\b(scripts|notebooks)/",
+            r"\bpython3?\b.*\b(scripts|notebooks|apps)/",
             r"\bpython3?\s+-c\b",
-            r"\b(nbconvert|jupyter\s+execute|jupyter\s+run|papermill|ipython)\b",
+            r"\b(nbconvert|jupyter\s+execute|jupyter\s+run|papermill|ipython|streamlit\s+run|uvicorn)\b",
         ]
         if any(re.search(pat, cmd) for pat in FORBIDDEN_PATTERNS):
             print(

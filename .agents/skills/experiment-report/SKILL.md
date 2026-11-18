@@ -9,12 +9,12 @@ Transforms executed notebook or script outputs into a concise, verified summary 
 
 ## Process
 
-1. **Verify inputs (STRICT: Agent NEVER executes notebooks):**
+1. **Verify inputs:**
    Read `specs/<NN-name>.md`.
    Extract run outputs:
    - *For notebooks:* Run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`.
-   - **If no outputs are present:** STOP and ask the user to execute the notebook in Jupyter Lab (`uv run jupyter lab`) first. The agent must NEVER execute or re-run the notebook autonomously (no `jupyter nbconvert --execute`, no headless python runs).
-   - *For scripts:* Review execution logs, generated data files in `data/`, or figures in `docs/figures/`.
+   - **If no outputs are present:** STOP and ask the user to execute the notebook in Jupyter Lab (`uv run jupyter lab`) first (do not execute it yourself; see `AGENTS.md`).
+   - *For scripts, apps, or APIs:* Review execution logs, `uv run pytest` test results (`tests/test_<name>.py`), serialized artifacts in `models/`, generated data files in `data/`, or figures in `docs/figures/`.
 2. **Draft or update report:**
    Populate `assets/report-template.md` and save to `docs/reports/<NN-name>.md` (when updating an existing report after a new iteration, re-verify all sections against the latest outputs):
    - Ground every metric, pattern, and claim directly in the actual outputs.

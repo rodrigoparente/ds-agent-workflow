@@ -1,6 +1,6 @@
 ---
 name: experiment-spec
-description: Plan and agree on an experiment, pipeline, or analysis spec before writing code. Works for exploratory data analysis (EDA), data pipelines, prototypes, model experiments, and open-ended investigations. Triggers whenever the user wants to experiment with, test, build, try, implement, or analyze a dataset, model, algorithm, or pipeline.
+description: Plan and agree on an experiment, pipeline, analysis, app/dashboard (Streamlit), or API endpoint (FastAPI) spec before writing code. Works for exploratory data analysis (EDA), data pipelines, prototypes, model experiments, interactive apps, and open-ended investigations. Triggers whenever the user wants to experiment with, test, build, try, implement, analyze, or operationalize a dataset, model, algorithm, pipeline, dashboard, or API—even when the user's prompt is vague or high-level.
 ---
 
 # Experiment Spec
@@ -11,14 +11,13 @@ No artificial goals or formal metrics are required—it is completely valid to d
 
 ## Process
 
-1. **Context check:**
+1. **Context & output check:**
    List `specs/` to find the next sequential number (`NN` = highest existing number + 1, starting with `01`).
-   If continuing or building on previous work, check the relevant spec and code.
-2. **Converse and clarify before drafting (Never be robotic — Use Dialog Box):**
-   Do NOT rush to generate a full draft spec in isolation without talking to the user. Use the **dialog box (`ask_question` tool)** to align on direction:
-   - Present 2–3 structured options for scope, evaluation split, or implementation flavor with `(Recommended)` first.
-   - The user can pick with one click or type custom nuance via the dialog box's "Other" option.
-   - Agree on a short kebab-case name (the agent adds the two-digit number, e.g. `01-sales-eda`).
+   If continuing, debugging, or building on previous work, read the relevant `specs/<NN-name>.md`, `notebooks/py/<NN-name>.py`, and run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb` to inspect actual executed outputs before proposing changes.
+2. **Converse and clarify when prompts are vague (Never be robotic — Use Dialog Box):**
+   The user does NOT need to know folder conventions (`specs/`, `models/`, `apps/`, `scripts/`), file names (`01-name`), split strategies, or exact metrics. When a prompt is open-ended (e.g., *"Let's build a recommender"*, *"The results look weird, can we fix it?"*, or *"Can we make an app for this?"*):
+   - Use the **dialog box (`ask_question` tool)** to propose 2–3 concrete, opinionated options for scope, evaluation split (e.g. temporal vs. stratified), baseline, or architecture with `(Recommended)` first.
+   - Automatically propose a clean kebab-case initiative name (`01-sales-eda`, `02-churn-api`) and route deliverables to the right folder (`notebooks/py/`, `models/`, `apps/`, `scripts/`, `tests/`).
    - Check data sources. When lake tables are involved, consult `data-catalog` for standard schemas and recipes.
 3. **Draft the spec:**
    Copy `assets/spec-template.md` to `specs/<NN-name>.md`.
@@ -33,12 +32,13 @@ No artificial goals or formal metrics are required—it is completely valid to d
 
 - **Never edit code without updating the spec first:** Whenever the user asks to modify, fix, or add steps to an existing experiment (`01-sales-eda`), **update `specs/<NN-name>.md` FIRST** before touching `notebooks/py/<NN-name>.py`.
 - **Iterating on an existing experiment (`<NN-name>`):**
-  - Use this when fixing bugs, adjusting filters/features, or adding follow-up charts/steps to the *same* question/dataset—even if `Status` is already `executed`.
-  - Update the relevant sections of `specs/<NN-name>.md`, add a 1-line note under `## Updates` (optional, minimal), and set `Status: approved` so it is clear the spec has unexecuted changes.
+  - Use this when fixing bugs, adjusting filters/features, or adding follow-up charts/steps to the *same* question/dataset—even if `Status` is already `executed` or triggered by discoveries in a downstream app/experiment.
+  - Update the relevant sections of `specs/<NN-name>.md`, append a structured 1-line entry under `## Updates` (`- *[v2 - Reason]:* ...`), and set `Status: approved` so it is clear the spec has unexecuted changes.
+  - If mid-stream literature research was conducted, add `Research: docs/research/<topic>.md` in the header metadata.
   - If `## Data & Inputs` changed, note that cached data (`data/<NN-name>.parquet`) must be refreshed (`REFRESH_DATA = True`).
-- **Starting a new experiment (`<(NN+1)-name>`):**
-  - Use this when starting a new phase, testing a different modeling family, or investigating a separate question.
-  - Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>`.
+- **Starting a new experiment, app, or API (`<(NN+1)-name>`):**
+  - Use this when starting a new phase, testing a different modeling family, investigating a separate question, or operationalizing a model into a Streamlit app (`apps/<NN>_<name>_app.py`), FastAPI service (`apps/<NN>_<name>_api.py`), or batch CLI (`scripts/<NN>_<name>_cli.py`).
+  - Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>` (and reference any serialized model artifact from `models/<NN-name>.joblib` and shared feature helpers in `scripts/<domain>_features.py`).
 
 ## Spec Lifecycle
 

@@ -10,37 +10,38 @@ Design Specifications:
 """
 
 from pathlib import Path
+
 from PIL import Image
 from pptx import Presentation
-from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Inches, Pt
 
 # -------------------------------------------------------------
 # Color Palette: Modern High-Contrast SaaS / Editorial
 # -------------------------------------------------------------
-BG_WHITE = RGBColor(255, 255, 255)         # Pure White slide background (#FFFFFF)
-TEXT_INK = RGBColor(15, 23, 42)            # Deep Ink for headlines (#0F172A)
-TEXT_BODY = RGBColor(51, 65, 85)           # Crisp Slate for body copy (#334155)
-TEXT_MUTED = RGBColor(100, 116, 139)       # Medium Slate for subtitles & kickers (#64748B)
-TEXT_FAINT = RGBColor(148, 163, 184)       # Light Slate for dimmed items & page numbers (#94A3B8)
+BG_WHITE = RGBColor(255, 255, 255)  # Pure White slide background (#FFFFFF)
+TEXT_INK = RGBColor(15, 23, 42)  # Deep Ink for headlines (#0F172A)
+TEXT_BODY = RGBColor(51, 65, 85)  # Crisp Slate for body copy (#334155)
+TEXT_MUTED = RGBColor(100, 116, 139)  # Medium Slate for subtitles & kickers (#64748B)
+TEXT_FAINT = RGBColor(148, 163, 184)  # Light Slate for dimmed items & page numbers (#94A3B8)
 
-ACCENT_BLUE = RGBColor(37, 99, 235)        # Sharp Cobalt for active accents & numbers (#2563EB)
+ACCENT_BLUE = RGBColor(37, 99, 235)  # Sharp Cobalt for active accents & numbers (#2563EB)
 
 # Modern Card Surfaces (User Specified: #f8fafc background, #e2e8f0 border)
-CARD_BG = RGBColor(248, 250, 252)          # Ultra-light crisp gray (#f8fafc)
-CARD_BORDER = RGBColor(226, 232, 240)      # Clean subtle hairline border (#e2e8f0)
-CARD_BORDER_ACTIVE = RGBColor(37, 99, 235) # Cobalt border for active/winning items (#2563EB)
+CARD_BG = RGBColor(248, 250, 252)  # Ultra-light crisp gray (#f8fafc)
+CARD_BORDER = RGBColor(226, 232, 240)  # Clean subtle hairline border (#e2e8f0)
+CARD_BORDER_ACTIVE = RGBColor(37, 99, 235)  # Cobalt border for active/winning items (#2563EB)
 
 # Small modern corner radius (subtle 6-8px equivalent, NOT bubbly oval clipart)
-CORNER_RADIUS_WIDE = 0.035                 # For wide cards (Roadmap, 11.3 in)
-CORNER_RADIUS_STANDARD = 0.025             # For standard columns & cards
+CORNER_RADIUS_WIDE = 0.035  # For wide cards (Roadmap, 11.3 in)
+CORNER_RADIUS_STANDARD = 0.025  # For standard columns & cards
 
 # Semantic Badge Colors
-GREEN_TEXT = RGBColor(22, 101, 52)         # #166534
-AMBER_TEXT = RGBColor(146, 64, 14)         # #92400E
-RED_TEXT = RGBColor(153, 27, 27)           # #991B1B
+GREEN_TEXT = RGBColor(22, 101, 52)  # #166534
+AMBER_TEXT = RGBColor(146, 64, 14)  # #92400E
+RED_TEXT = RGBColor(153, 27, 27)  # #991B1B
 
 FONT_PRIMARY = "Arial"
 
@@ -94,8 +95,8 @@ def create_base_slide(
     prs: Presentation,
     page_num: int,
     section_kicker: str = None,  # e.g. "02 / METHODOLOGY"
-    title: str = None,           # The single center idea / takeaway headline
-    subtitle: str = None,        # Optional 1-line context
+    title: str = None,  # The single center idea / takeaway headline
+    subtitle: str = None,  # Optional 1-line context
     notes: str = "",
 ):
     """Creates a clean base slide with consistent header hierarchy and section breadcrumb."""
@@ -168,7 +169,7 @@ def add_roadmap_slide(
     notes: str = "",
 ):
     """Draws a clean, full-width unified roadmap slide without redundant split columns or badges.
-    
+
     Layout:
     - Top: Clean header with eyebrow, title, and context.
     - Center: 4 full-width horizontal cards spanning across the slide.
@@ -201,9 +202,13 @@ def add_roadmap_slide(
         headline = "Agenda & Discussion Roadmap"
         subtitle = "Structured walkthrough covering context, methodology, findings, and next steps."
     else:
-        p_eyebrow.text = f"ROADMAP PROGRESS · SECTION {active_idx + 1:02d} OF {len(sections):02d}".upper()
+        p_eyebrow.text = (
+            f"ROADMAP PROGRESS · SECTION {active_idx + 1:02d} OF {len(sections):02d}".upper()
+        )
         headline = sections[active_idx]
-        subtitle = f"Section {active_idx + 1:02d} of {len(sections):02d} · Key evaluation and findings."
+        subtitle = (
+            f"Section {active_idx + 1:02d} of {len(sections):02d} · Key evaluation and findings."
+        )
 
     p_eyebrow.font.size = Pt(10)
     p_eyebrow.font.bold = True
@@ -235,7 +240,7 @@ def add_roadmap_slide(
     for i, sec in enumerate(sections):
         top_pos = Inches(start_top + i * (card_h + gap))
         is_active = (active_idx == i) if active_idx is not None else False
-        is_dimmed = (active_idx is not None and active_idx != i)
+        is_dimmed = active_idx is not None and active_idx != i
 
         # Full-width card container (#f8fafc background, #e2e8f0 border, small rounded corners)
         border_col = CARD_BORDER_ACTIVE if is_active else CARD_BORDER
@@ -254,13 +259,24 @@ def add_roadmap_slide(
 
         # Cobalt accent stripe on active card
         if is_active:
-            stripe = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, c_left, top_pos + Inches(0.1), Inches(0.08), Inches(card_h) - Inches(0.2))
+            stripe = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                c_left,
+                top_pos + Inches(0.1),
+                Inches(0.08),
+                Inches(card_h) - Inches(0.2),
+            )
             stripe.fill.solid()
             stripe.fill.fore_color.rgb = ACCENT_BLUE
             stripe.line.fill.background()
 
         # Text inside card
-        tx_card = slide.shapes.add_textbox(c_left + Inches(0.4), top_pos + Inches(0.18), c_width - Inches(0.8), Inches(card_h) - Inches(0.36))
+        tx_card = slide.shapes.add_textbox(
+            c_left + Inches(0.4),
+            top_pos + Inches(0.18),
+            c_width - Inches(0.8),
+            Inches(card_h) - Inches(0.36),
+        )
         tf_card = tx_card.text_frame
         tf_card.word_wrap = False
         p_c = tf_card.paragraphs[0]
@@ -270,14 +286,20 @@ def add_roadmap_slide(
         r_num.text = f"{i + 1:02d}    "
         r_num.font.size = Pt(18)
         r_num.font.bold = True
-        r_num.font.color.rgb = ACCENT_BLUE if is_active else (TEXT_FAINT if is_dimmed else ACCENT_BLUE)
+        r_num.font.color.rgb = (
+            ACCENT_BLUE if is_active else (TEXT_FAINT if is_dimmed else ACCENT_BLUE)
+        )
 
         # Section Title
         r_txt = p_c.add_run()
         r_txt.text = sec
         r_txt.font.size = Pt(17)
         r_txt.font.bold = is_active or (active_idx is None)
-        r_txt.font.color.rgb = (ACCENT_BLUE if is_active else TEXT_INK) if (is_active or active_idx is None) else TEXT_FAINT
+        r_txt.font.color.rgb = (
+            (ACCENT_BLUE if is_active else TEXT_INK)
+            if (is_active or active_idx is None)
+            else TEXT_FAINT
+        )
 
     if notes:
         set_presenter_notes(slide, notes)
@@ -289,10 +311,10 @@ def add_roadmap_slide(
 # -------------------------------------------------------------
 def add_stat_and_bullets(
     slide,
-    stat_value: str,        # e.g. "94.9%"
-    stat_label: str,        # e.g. "Catalog Interaction Sparsity"
-    stat_subtext: str,      # e.g. "Only 5.1% of user-movie pairs have direct ratings"
-    bullets: list,          # list of ("Anchor:", "Text")
+    stat_value: str,  # e.g. "94.9%"
+    stat_label: str,  # e.g. "Catalog Interaction Sparsity"
+    stat_subtext: str,  # e.g. "Only 5.1% of user-movie pairs have direct ratings"
+    bullets: list,  # list of ("Anchor:", "Text")
     top: Inches = Inches(2.0),
     left: Inches = Inches(1.0),
     total_width: Inches = Inches(11.3),
@@ -304,7 +326,9 @@ def add_stat_and_bullets(
     # Left Column Card (Hero Stat)
     add_card_box(slide, left, top, col_w, height, radius=CORNER_RADIUS_STANDARD)
 
-    tx_stat = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(0.6), col_w - Inches(0.8), height - Inches(1.2))
+    tx_stat = slide.shapes.add_textbox(
+        left + Inches(0.4), top + Inches(0.6), col_w - Inches(0.8), height - Inches(1.2)
+    )
     tf_stat = tx_stat.text_frame
     tf_stat.word_wrap = True
 
@@ -332,7 +356,9 @@ def add_stat_and_bullets(
     r_left = left + col_w + Inches(0.5)
     add_card_box(slide, r_left, top, col_w, height, radius=CORNER_RADIUS_STANDARD)
 
-    tx_b = slide.shapes.add_textbox(r_left + Inches(0.4), top + Inches(0.4), col_w - Inches(0.8), height - Inches(0.8))
+    tx_b = slide.shapes.add_textbox(
+        r_left + Inches(0.4), top + Inches(0.4), col_w - Inches(0.8), height - Inches(0.8)
+    )
     tf_b = tx_b.text_frame
     tf_b.word_wrap = True
 
@@ -364,7 +390,7 @@ def add_horizontal_pipeline(
     card_height: Inches = Inches(4.5),
 ):
     """Layout: Horizontal Step Pipeline / Phased Roadmap.
-    
+
     All steps share consistent, cohesive styling with #f8fafc fill, #e2e8f0 border, and small rounded corners.
     """
     n = len(steps)
@@ -380,7 +406,9 @@ def add_horizontal_pipeline(
         add_card_box(slide, s_left, top, step_w, card_height, radius=CORNER_RADIUS_STANDARD)
 
         # Text Frame
-        tx = slide.shapes.add_textbox(s_left + Inches(0.3), top + Inches(0.3), step_w - Inches(0.6), card_height - Inches(0.6))
+        tx = slide.shapes.add_textbox(
+            s_left + Inches(0.3), top + Inches(0.3), step_w - Inches(0.6), card_height - Inches(0.6)
+        )
         tf = tx.text_frame
         tf.word_wrap = True
 
@@ -419,7 +447,7 @@ def add_horizontal_pipeline(
 # -------------------------------------------------------------
 def add_two_column_cards(
     slide,
-    left_card: dict,   # {"eyebrow": "...", "title": "...", "bullets": [...]}
+    left_card: dict,  # {"eyebrow": "...", "title": "...", "bullets": [...]}
     right_card: dict,  # {"eyebrow": "...", "title": "...", "bullets": [...]}
     top: Inches = Inches(2.0),
     left: Inches = Inches(1.0),
@@ -431,10 +459,12 @@ def add_two_column_cards(
     col_w = (total_width - Inches(0.5)) / 2
     actual_h = height if not bottom_note else (height - Inches(0.6))
 
-    for idx, (c_data, c_left) in enumerate([(left_card, left), (right_card, left + col_w + Inches(0.5))]):
+    for c_data, c_left in [(left_card, left), (right_card, left + col_w + Inches(0.5))]:
         add_card_box(slide, c_left, top, col_w, actual_h, radius=CORNER_RADIUS_STANDARD)
 
-        tx = slide.shapes.add_textbox(c_left + Inches(0.35), top + Inches(0.3), col_w - Inches(0.7), actual_h - Inches(0.6))
+        tx = slide.shapes.add_textbox(
+            c_left + Inches(0.35), top + Inches(0.3), col_w - Inches(0.7), actual_h - Inches(0.6)
+        )
         tf = tx.text_frame
         tf.word_wrap = True
 
@@ -471,7 +501,9 @@ def add_two_column_cards(
                 r_txt.font.color.rgb = TEXT_BODY
 
     if bottom_note:
-        tx_bn = slide.shapes.add_textbox(left, top + actual_h + Inches(0.15), total_width, Inches(0.45))
+        tx_bn = slide.shapes.add_textbox(
+            left, top + actual_h + Inches(0.15), total_width, Inches(0.45)
+        )
         p_bn = tx_bn.text_frame.paragraphs[0]
         p_bn.text = bottom_note
         p_bn.font.size = Pt(11)
@@ -484,7 +516,7 @@ def add_two_column_cards(
 # -------------------------------------------------------------
 def add_comparison_split(
     slide,
-    left_col: dict,   # {"kicker": "STATUS QUO", "title": "...", "bullets": [...]}
+    left_col: dict,  # {"kicker": "STATUS QUO", "title": "...", "bullets": [...]}
     right_col: dict,  # {"kicker": "RECOMMENDED", "title": "...", "bullets": [...]}
     top: Inches = Inches(2.0),
     left: Inches = Inches(1.0),
@@ -497,7 +529,9 @@ def add_comparison_split(
     # Left Column (Status Quo)
     add_card_box(slide, left, top, col_w, height, radius=CORNER_RADIUS_STANDARD)
 
-    tx1 = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(0.35), col_w - Inches(0.8), height - Inches(0.7))
+    tx1 = slide.shapes.add_textbox(
+        left + Inches(0.4), top + Inches(0.35), col_w - Inches(0.8), height - Inches(0.7)
+    )
     tf1 = tx1.text_frame
     tf1.word_wrap = True
 
@@ -532,15 +566,28 @@ def add_comparison_split(
 
     # Right Column (Recommended: cobalt border highlight)
     r_left = left + col_w + Inches(0.5)
-    add_card_box(slide, r_left, top, col_w, height, border_color=CARD_BORDER_ACTIVE, border_width=Pt(1.5), radius=CORNER_RADIUS_STANDARD)
+    add_card_box(
+        slide,
+        r_left,
+        top,
+        col_w,
+        height,
+        border_color=CARD_BORDER_ACTIVE,
+        border_width=Pt(1.5),
+        radius=CORNER_RADIUS_STANDARD,
+    )
 
     # Accent stripe on winning left edge
-    stripe = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, r_left, top + Inches(0.1), Inches(0.08), height - Inches(0.2))
+    stripe = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, r_left, top + Inches(0.1), Inches(0.08), height - Inches(0.2)
+    )
     stripe.fill.solid()
     stripe.fill.fore_color.rgb = ACCENT_BLUE
     stripe.line.fill.background()
 
-    tx2 = slide.shapes.add_textbox(r_left + Inches(0.4), top + Inches(0.35), col_w - Inches(0.8), height - Inches(0.7))
+    tx2 = slide.shapes.add_textbox(
+        r_left + Inches(0.4), top + Inches(0.35), col_w - Inches(0.8), height - Inches(0.7)
+    )
     tf2 = tx2.text_frame
     tf2.word_wrap = True
 
@@ -592,7 +639,9 @@ def add_double_stat(
     for idx, (st, c_left) in enumerate([(stat1, left), (stat2, left + col_w + Inches(0.5))]):
         add_card_box(slide, c_left, top, col_w, height, radius=CORNER_RADIUS_STANDARD)
 
-        tx = slide.shapes.add_textbox(c_left + Inches(0.4), top + Inches(0.6), col_w - Inches(0.8), height - Inches(1.2))
+        tx = slide.shapes.add_textbox(
+            c_left + Inches(0.4), top + Inches(0.6), col_w - Inches(0.8), height - Inches(1.2)
+        )
         tf = tx.text_frame
         tf.word_wrap = True
 
@@ -651,7 +700,9 @@ def add_chart_element(
         tx_top = top + img_h + gap
         add_card_box(slide, left, tx_top, width, Inches(0.95), radius=CORNER_RADIUS_WIDE)
 
-        tx = slide.shapes.add_textbox(left + Inches(0.3), tx_top + Inches(0.12), width - Inches(0.6), Inches(0.7))
+        tx = slide.shapes.add_textbox(
+            left + Inches(0.3), tx_top + Inches(0.12), width - Inches(0.6), Inches(0.7)
+        )
         tf = tx.text_frame
         tf.word_wrap = True
 
@@ -693,7 +744,9 @@ def add_clean_table(
 
     if col_widths and len(col_widths) == num_cols:
         for idx, w in enumerate(col_widths):
-            table.columns[idx].width = w
+            table.columns[idx].width = (
+                Inches(w) if isinstance(w, float) or (isinstance(w, int) and w < 50) else w
+            )
 
     # Header Row
     for col_idx, h_text in enumerate(headers):
@@ -708,14 +761,12 @@ def add_clean_table(
         p.font.bold = True
         p.font.color.rgb = BG_WHITE
         p.font.name = FONT_PRIMARY
-        if col_idx in (1, 2, 3):
-            p.alignment = PP_ALIGN.CENTER
-        elif col_idx == num_cols - 1:
+        if col_idx in (1, 2, 3) or col_idx == num_cols - 1:
             p.alignment = PP_ALIGN.CENTER
 
     # Data Rows
     for row_idx, r_data in enumerate(rows):
-        is_even = (row_idx % 2 == 0)
+        is_even = row_idx % 2 == 0
         row_bg = BG_WHITE if is_even else CARD_BG
 
         for col_idx, val in enumerate(r_data):
@@ -747,9 +798,7 @@ def add_clean_table(
                 if col_idx == 0:
                     p.font.bold = True
                     p.font.color.rgb = TEXT_INK
-                if col_idx in (1, 2, 3):
-                    p.alignment = PP_ALIGN.CENTER
-                elif col_idx == num_cols - 1:
+                if col_idx in (1, 2, 3) or col_idx == num_cols - 1:
                     p.alignment = PP_ALIGN.CENTER
 
     return table_shape

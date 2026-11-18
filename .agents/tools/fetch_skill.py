@@ -18,6 +18,42 @@ from pathlib import Path
 REPO_TARBALL = "https://codeload.github.com/anthropics/skills/tar.gz/main"
 
 
+def _extract_skill_tarball(data: bytes, skill_name: str, dest_dir: Path) -> int:
+    """Extract matching skill directory from tarball bytes and return extracted file count."""
+    extracted_count = 0
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+        prefix = next(
+            (
+                "/".join(m.name.split("/")[:3]) + "/"
+                for m in tar.getmembers()
+                if len(m.name.split("/")) > 2
+                and m.name.split("/")[1] == "skills"
+                and m.name.split("/")[2] == skill_name
+            ),
+            None,
+        )
+        if not prefix:
+            return -1
+
+        for member in tar.getmembers():
+            if not member.name.startswith(prefix):
+                continue
+            rel_path = member.name[len(prefix) :]
+            if not rel_path:
+                continue
+            target_path = dest_dir / rel_path
+            if member.isdir():
+                target_path.mkdir(parents=True, exist_ok=True)
+            elif member.isreg():
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with tar.extractfile(member) as src_file, open(target_path, "wb") as dst_file:
+                    dst_file.write(src_file.read())
+                if member.mode & 0o111:
+                    target_path.chmod(target_path.stat().st_mode | 0o111)
+                extracted_count += 1
+    return extracted_count
+
+
 def fetch_skill(
     skill_name: str, force: bool = False, target_root: Path | None = None
 ) -> bool:
@@ -25,10 +61,7 @@ def fetch_skill(
         target_root = Path(__file__).resolve().parent.parent / "skills"
 
     dest_dir = target_root / skill_name
-    scripts_dir = dest_dir / "scripts"
-
-    # If scripts exist and not force, no need to download
-    if dest_dir.exists() and scripts_dir.exists() and not force:
+    if dest_dir.exists() and (dest_dir / "scripts").exists() and not force:
         print(
             f"Skill '{skill_name}' is already installed at {dest_dir}. "
             "Use --force to re-download."
@@ -47,43 +80,13 @@ def fetch_skill(
         return False
 
     dest_dir.mkdir(parents=True, exist_ok=True)
-    extracted_count = 0
-
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
-        prefix_to_strip = None
-        for member in tar.getmembers():
-            parts = member.name.split("/")
-            if len(parts) > 2 and parts[1] == "skills" and parts[2] == skill_name:
-                prefix_to_strip = "/".join(parts[:3]) + "/"
-                break
-
-        if not prefix_to_strip:
-            print(
-                f"Skill '{skill_name}' not found in Anthropic skills repository.",
-                file=sys.stderr,
-            )
-            return False
-
-        for member in tar.getmembers():
-            if not member.name.startswith(prefix_to_strip):
-                continue
-            rel_path = member.name[len(prefix_to_strip) :]
-            if not rel_path:
-                continue
-
-            target_path = dest_dir / rel_path
-            if member.isdir():
-                target_path.mkdir(parents=True, exist_ok=True)
-            elif member.isreg():
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                with (
-                    tar.extractfile(member) as src_file,
-                    open(target_path, "wb") as dst_file,
-                ):
-                    dst_file.write(src_file.read())
-                if member.mode & 0o111:
-                    target_path.chmod(target_path.stat().st_mode | 0o111)
-                extracted_count += 1
+    extracted_count = _extract_skill_tarball(data, skill_name, dest_dir)
+    if extracted_count < 0:
+        print(
+            f"Skill '{skill_name}' not found in Anthropic skills repository.",
+            file=sys.stderr,
+        )
+        return False
 
     print(f"Successfully installed '{skill_name}' to {dest_dir} ({extracted_count} files).")
     return True
