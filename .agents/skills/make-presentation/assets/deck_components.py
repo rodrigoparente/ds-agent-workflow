@@ -60,7 +60,7 @@ def add_card_box(
     border_width=Pt(1),
     radius=CORNER_RADIUS_STANDARD,
 ):
-    """Draws a flat modern card with #f8fafc background, #e2e8f0 border, and small rounded corners."""
+    """Draws a flat modern card with #f8fafc background, #e2e8f0 border, and rounded corners."""
     box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
     box.adjustments[0] = radius
     box.fill.solid()
@@ -311,9 +311,9 @@ def add_roadmap_slide(
 # -------------------------------------------------------------
 def add_stat_and_bullets(
     slide,
-    stat_value: str,  # e.g. "94.9%"
-    stat_label: str,  # e.g. "Catalog Interaction Sparsity"
-    stat_subtext: str,  # e.g. "Only 5.1% of user-movie pairs have direct ratings"
+    stat_value: str,  # e.g. "24.5%"
+    stat_label: str,  # e.g. "Primary Metric Improvement"
+    stat_subtext: str,  # e.g. "Measured across the held-out evaluation split"
     bullets: list,  # list of ("Anchor:", "Text")
     top: Inches = Inches(2.0),
     left: Inches = Inches(1.0),
@@ -391,7 +391,7 @@ def add_horizontal_pipeline(
 ):
     """Layout: Horizontal Step Pipeline / Phased Roadmap.
 
-    All steps share consistent, cohesive styling with #f8fafc fill, #e2e8f0 border, and small rounded corners.
+    All steps share consistent styling with #f8fafc fill, #e2e8f0 border, and rounded corners.
     """
     n = len(steps)
     if n == 0:

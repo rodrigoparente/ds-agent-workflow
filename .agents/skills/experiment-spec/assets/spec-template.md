@@ -8,11 +8,11 @@ Research: docs/research/<topic>.md (optional, delete if none)
 What we are exploring, analyzing, or building. Clear, concise description without requiring artificial goals or metrics.
 
 ## Data & Inputs
-Source datasets, files, model artifacts, or parameters (consult `data-catalog` if using lake tables).
+Source tables, datasets, files, artifacts, or parameters (consult `data-catalog` if using lake tables).
 Clearly document the data management process:
 - Sources & join keys: ...
 - Deduplication & filters: ...
-- Transformations & shared feature logic (`scripts/<domain>_features.py` if reused): ...
+- Transformations & preprocessing: ...
 
 ## Approach
 Steps to take:
@@ -20,8 +20,8 @@ Steps to take:
 2. ...
 
 ## Deliverable
-- Notebook (`notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`), script (`scripts/<NN-name>.py`), or app/API (`apps/<NN>_<name>_app.py` / `apps/<NN>_<name>_api.py`).
-- Optional model artifact (`models/<NN-name>.joblib`), shared helper (`scripts/<domain>_features.py`), unit tests (`tests/test_<name>.py`), or figure (`docs/figures/<NN-name>_summary.png`).
+- Notebook (`notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`), script (`scripts/<name>.py`), or application (`apps/<name>.py`).
+- Optional artifacts: saved models (`models/`), shared modules (`scripts/`), tests (`tests/`), or figures (`docs/figures/<NN-name>_*.png`).
 
 ## Assumptions (confirm)
 - Choices or defaults to confirm with the user. (Remove once confirmed).
@@ -31,4 +31,4 @@ Steps to take:
 
 ## Updates (if revisited)
 - *[v1 - Initial Spec]:* ...
-- *[v2 - Iteration Reason]:* What changed, why, and whether `REFRESH_DATA = True` is required.
+- *[v2 - Update]:* What changed and why (note `REFRESH_DATA = True` if data inputs changed).

@@ -3,6 +3,7 @@
 1. Block direct reads/edits of notebooks/*.ipynb (use notebooks/py/*.py and nb_summary.py).
 2. Block autonomous execution of notebooks, notebooks/py/*.py, data scripts, or python -c.
 Exit 2 = block and return message to the agent."""
+
 import json
 import os
 import re
@@ -17,7 +18,7 @@ root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
 rel = os.path.relpath(os.path.abspath(path), root).replace(os.sep, "/") if path else ""
 
-if (rel.startswith("notebooks/") or "/notebooks/" in rel) and rel.endswith(".ipynb"):
+if rel.startswith("notebooks/") and rel.endswith(".ipynb"):
     print(
         "Blocked: do not open notebooks/*.ipynb directly. Edit the paired notebooks/py/*.py file; "
         "read executed outputs with .agents/tools/nb_summary.py.",

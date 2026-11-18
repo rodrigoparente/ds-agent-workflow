@@ -21,11 +21,7 @@ import pandas as pd
 # %%
 NAME = "NN-name"  # same as the spec file name, specs/NN-name.md
 ROOT = next(
-    (
-        p
-        for p in [Path.cwd(), *Path.cwd().parents]
-        if (p / "specs").exists() or (p / "pyproject.toml").exists()
-    ),
+    (p for p in [Path.cwd(), *Path.cwd().parents] if (p / "pyproject.toml").exists()),
     Path.cwd(),
 )
 DATA = ROOT / "data"
@@ -35,8 +31,6 @@ REFRESH_DATA = False  # set True when ## Data & Inputs changes in an iteration
 SEED = 42
 # Parameters, only if the spec lists some. Example:
 # SAMPLE_FRAC = 1.0
-DATA.mkdir(parents=True, exist_ok=True)
-MODELS.mkdir(parents=True, exist_ok=True)
 FIGURES.mkdir(parents=True, exist_ok=True)
 np.random.seed(SEED)
 

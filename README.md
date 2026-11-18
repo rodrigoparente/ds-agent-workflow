@@ -31,10 +31,10 @@ specs/                        <NN-name>.md (authoritative specs, OpenSpec-style)
 notebooks/
   ├── <NN-name>.ipynb         executed notebook outputs (run by user, git-ignored)
   └── py/<NN-name>.py         notebook source of truth (flat, clean, git-tracked)
-models/                       <NN-name>.joblib (serialized model bundles, git-ignored)
-apps/                         <NN>_<name>_app.py (Streamlit) / <NN>_<name>_api.py (FastAPI)
-scripts/                      shared feature modules (*_features.py), CLIs, deck builders
-tests/                        test_<name>.py (pytest unit & FastAPI contract tests)
+models/                       serialized models and artifacts (git-ignored)
+apps/                         interactive apps, dashboards, and API services
+scripts/                      standalone scripts, pipelines, shared modules, deck builders
+tests/                        test_<name>.py (unit and integration tests)
 docs/
   ├── reports/<NN-name>.md    results and analysis summary (plus .docx / .pdf on request)
   ├── slides/<NN-name>.md     executive slide outline and deck (.pptx)
@@ -117,9 +117,9 @@ uv run jupyter lab
 ### 3. Start Working with Your Agent
 Open this workspace in your agent environment (Antigravity, Claude Code, Cursor) and start with natural language:
 - *"I want to explore the data in table X"*
-- *"How should we approach customer churn prediction?"*
-- *"I want to know more about common search and recommendation algorithms"*
-- *"Let's build an experiment testing item-based collaborative filtering"*
+- *"How should we approach this prediction problem?"*
+- *"I want to know more about state-of-the-art methods for X"*
+- *"Let's build a baseline experiment and evaluate it"*
 
 ---
 

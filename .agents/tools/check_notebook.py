@@ -6,6 +6,7 @@ Runs ruff format, enforces the size/documentation budget from AGENTS.md, checks 
 imported package is in the install cell, then syncs the paired .ipynb in notebooks/.
 Prints problems and exits 1 if anything is wrong. Any tool or person can run it; Claude Code
 also runs it automatically through .claude/hooks/notebook_check.py."""
+
 import ast
 import re
 import shutil
@@ -69,7 +70,7 @@ def installed_packages(text):
     pkgs = set()
     for line in text.splitlines():
         m = re.match(r"#\s*[%!]pip install(.*)", line)
-        for tok in (m.group(1).split() if m else []):
+        for tok in m.group(1).split() if m else []:
             tok = tok.strip("\"'")
             name = re.match(r"[A-Za-z0-9_.-]+", tok)
             if not tok.startswith("-") and name:
@@ -91,15 +92,10 @@ def missing_installs(text, path):
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             names.add(node.module.split(".")[0])
     need = []
-    p = Path(path).resolve()
-    proj_root = p.parents[2] if p.parent.name == "py" and len(p.parents) >= 3 else Path.cwd()
     for name in sorted(names):
         here = [
-            p.parent / f"{name}.py",
+            Path(path).parent / f"{name}.py",
             Path(name),
-            proj_root / "scripts" / f"{name}.py",
-            proj_root / "scripts" / name,
-            proj_root / name,
             Path("scripts") / f"{name}.py",
             Path("scripts") / name,
         ]

@@ -13,6 +13,10 @@ __pycache__/
 .env.*
 .claude/settings.local.json
 
+# On-demand document export skills
+.agents/skills/docx/
+.agents/skills/pdf/
+
 # Generated workflow & project outputs (template repo)
 uv.lock
 apps/
@@ -24,5 +28,4 @@ scripts/
 specs/
 tests/
 *.ipynb
-*.joblib
 ~$*

@@ -14,10 +14,10 @@ Follows a strict minimalist design philosophy: **One Slide = One Center Idea + O
 ## 1. Core Principles: Modern, Clean & Focused
 
 ### A. The Golden Rule: One Slide = One Center Idea + One Purposeful Layout
-- **Every slide must have a single center idea:** Stated clearly in the action headline (e.g., *"Item-Based CF Cuts Recommendation Error by 7.6%"*).
+- **Every slide must have a single center idea:** Stated clearly in the action headline (e.g., *"Proposed Approach Cuts Error by 12% While Halving Latency"*).
 - **Avoid boring bullet list monotony:** Never repeat the same plain bullet list on consecutive slides. Choose from a rich palette of purposeful visual layouts:
   1. **Stat + Story (Asymmetrical):** Giant 64pt metric on the left + 2 clean narrative bullets on the right.
-  2. **Two-Card Bento Showcase:** Two flat side-by-side cards (e.g. Operational vs. Business Impact, or Two Movie Clusters).
+  2. **Two-Card Bento Showcase:** Two flat side-by-side cards (e.g. Operational vs. Business Impact, or Segment A vs. Segment B).
   3. **Horizontal Architecture Pipeline:** 3-stage step-by-step flow with step numbers and deliverables.
   4. **Flat Comparison Split:** Before vs. After on flat surfaces with subtle accent striping.
   5. **Double Hero Stat:** Two massive 56pt numbers floating in whitespace.
@@ -166,7 +166,9 @@ s1 = create_base_slide(
 )
 
 # Slide 2: Agenda (Unified Roadmap, active_idx=None)
-add_roadmap_slide(prs, page_num=2, sections=SECTIONS, active_idx=None, notes="Our four-part agenda.")
+add_roadmap_slide(
+    prs, page_num=2, sections=SECTIONS, active_idx=None, notes="Our four-part agenda."
+)
 
 # Slide 3: Section 01 Divider (Unified Roadmap, Section 01 active)
 add_roadmap_slide(prs, page_num=3, sections=SECTIONS, active_idx=0, notes="Starting with context.")
@@ -182,7 +184,7 @@ s4 = create_base_slide(
 )
 add_stat_and_bullets(
     s4,
-    stat_value="94.9%",
+    stat_value="24.5%",
     stat_label="Primary Metric Label",
     stat_subtext="Supporting context for the hero number.",
     bullets=[
@@ -201,8 +203,16 @@ s5 = create_base_slide(
 )
 add_two_column_cards(
     s5,
-    left_card={"eyebrow": "FACET ONE", "title": "Operational Bottleneck", "bullets": [("Key point:", "Detail.")]},
-    right_card={"eyebrow": "FACET TWO", "title": "Business Impact", "bullets": [("Key point:", "Detail.")]},
+    left_card={
+        "eyebrow": "FACET ONE",
+        "title": "Operational Bottleneck",
+        "bullets": [("Key point:", "Detail.")],
+    },
+    right_card={
+        "eyebrow": "FACET TWO",
+        "title": "Business Impact",
+        "bullets": [("Key point:", "Detail.")],
+    },
 )
 
 # Slide 6: Flat Comparison Split (Before vs. After)
@@ -215,8 +225,16 @@ s6 = create_base_slide(
 )
 add_comparison_split(
     s6,
-    left_col={"kicker": "STATUS QUO", "title": "Current Baseline", "bullets": [("Limitation:", "Detail.")]},
-    right_col={"kicker": "RECOMMENDED", "title": "Proposed Approach", "bullets": [("Advantage:", "Detail.")]},
+    left_col={
+        "kicker": "STATUS QUO",
+        "title": "Current Baseline",
+        "bullets": [("Limitation:", "Detail.")],
+    },
+    right_col={
+        "kicker": "RECOMMENDED",
+        "title": "Proposed Approach",
+        "bullets": [("Advantage:", "Detail.")],
+    },
 )
 
 # Slide 7: Horizontal Pipeline (3-Stage Flow)
@@ -230,9 +248,21 @@ s7 = create_base_slide(
 add_horizontal_pipeline(
     s7,
     steps=[
-        {"num": "01", "title": "Ingest & Clean", "bullets": [("Deduplication:", "Remove duplicate records.")]},
-        {"num": "02", "title": "Transform & Score", "bullets": [("Feature logic:", "Compute normalized scores.")]},
-        {"num": "03", "title": "Validate & Export", "bullets": [("Guardrails:", "Verify coverage thresholds.")]},
+        {
+            "num": "01",
+            "title": "Ingest & Clean",
+            "bullets": [("Deduplication:", "Remove duplicate records.")],
+        },
+        {
+            "num": "02",
+            "title": "Transform & Score",
+            "bullets": [("Feature logic:", "Compute normalized scores.")],
+        },
+        {
+            "num": "03",
+            "title": "Validate & Export",
+            "bullets": [("Guardrails:", "Verify coverage thresholds.")],
+        },
     ],
 )
 
