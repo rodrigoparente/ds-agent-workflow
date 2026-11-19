@@ -1,0 +1,48 @@
+{
+  "ds-workflow-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command|read_file|view_file|edit_file|write_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./hooks/guard.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "ds-workflow-lint": {
+    "PostToolUse": [
+      {
+        "matcher": "edit_file|write_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./hooks/lint.py",
+            "timeout": 90
+          }
+        ]
+      }
+    ]
+  },
+  "ds-workflow-stop-tests": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 ./hooks/stop_tests.py",
+        "timeout": 150
+      }
+    ]
+  },
+  "ds-workflow-session-start": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 ./hooks/session_start.py",
+        "timeout": 5
+      }
+    ]
+  }
+}

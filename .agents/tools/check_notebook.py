@@ -2,10 +2,11 @@
 """Format, check and sync an experiment notebook (jupytext percent .py file).
 
 Usage: python .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
-Runs ruff format, enforces the size/documentation budget from AGENTS.md, checks that every
-imported package is in the install cell, then syncs the paired .ipynb in notebooks/.
-Prints problems and exits 1 if anything is wrong. Any tool or person can run it; Claude Code
-also runs it automatically through .claude/hooks/notebook_check.py."""
+Runs ruff format, enforces the size/documentation budget from write-code/SKILL.md,
+checks that every imported package is in the install cell, then syncs the paired .ipynb
+in notebooks/. Prints problems and exits 1 if anything is wrong. Any tool or person can
+run it; coding agents also run it automatically through .agents/hooks/lint.py.
+"""
 
 import ast
 import re
@@ -14,6 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Keep these thresholds in sync with .agents/skills/write-code/SKILL.md
 MAX_LINES = 220  # max code lines across notebook (excluding markdown, comments, SQL)
 MAX_CELL = 35  # max code lines per cell (excluding comments, blank lines, SQL)
 MAX_DEF_LINES = 15  # max lines per local helper function (move larger ones to scripts/)
@@ -78,12 +80,10 @@ def installed_packages(text):
     return pkgs
 
 
-def missing_installs(text, path):
+def missing_installs(tree, text, path):
     """Third-party packages the notebook needs that the install cell does not list."""
-    try:
-        tree = ast.parse(text)
-    except SyntaxError:
-        return []  # ruff reports syntax errors
+    if tree is None:
+        return []
     have = installed_packages(text)
     names = set()
     for node in ast.walk(tree):
@@ -107,11 +107,9 @@ def missing_installs(text, path):
     return [pkg for pkg in need if norm(pkg) not in have]
 
 
-def structural_problems(text):
+def structural_problems(tree):
     """Detect classes, oversized helper functions, and defensive try/except bloat via AST."""
-    try:
-        tree = ast.parse(text)
-    except SyntaxError:
+    if tree is None:
         return []
     out = []
     for node in ast.walk(tree):
@@ -166,56 +164,69 @@ def cell_problems(cells):
 
 
 def problems_in(text, path="."):
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        tree = None  # ruff reports syntax errors
     out = []
-    missing = missing_installs(text, path)
+    missing = missing_installs(tree, text, path)
     if missing:
         out.append(
             f"Not in the install cell: {', '.join(missing)}. Add to `# %pip install -q ...`. "
             "(If pip name differs from import name, add to PIP_NAME in check_notebook.py.)"
         )
-    out += structural_problems(text)
+    out += structural_problems(tree)
     cells = parse_cells(collapse_strings(text))
     if not cells or cells[0][0] != "md":
         out.append("First cell must be markdown: title, overview/question, and spec link.")
     return out + cell_problems(cells)
 
 
-def main(paths):
-    failed = False
-    for path in paths:
-        problems = []
-        run("ruff", "format", path)
-        r = run("ruff", "check", "--fix", "--quiet", path)
+def _sync_ipynb(path: str) -> list[str]:
+    """Sync paired .ipynb via jupytext and return any sync errors."""
+    nb_path = Path(path)
+    nb_dir = nb_path.parent.parent if nb_path.parent.name == "py" else Path("notebooks")
+    nb_dir.mkdir(parents=True, exist_ok=True)
+    sync_res = run("jupytext", "--sync", path)
+    if sync_res is None:
+        return ["jupytext is not installed or not found in environment (run `uv sync`)."]
+    if sync_res.returncode != 0:
+        err = (sync_res.stdout or sync_res.stderr).strip()
+        return [f"jupytext --sync failed:\n{err}"]
+    expected_ipynb = nb_dir / f"{nb_path.stem}.ipynb"
+    if nb_path.parent.name == "py" and not expected_ipynb.exists():
+        return [
+            f"jupytext --sync completed but {expected_ipynb} was not generated. "
+            "Check jupytext.toml pairing."
+        ]
+    return []
+
+
+def check_one_notebook(path: str) -> list[str]:
+    """Format, lint, validate, and sync a single notebook .py file."""
+    problems = []
+    fmt_res = run("ruff", "format", path)
+    if fmt_res is None:
+        problems.append("ruff is not installed or not found in environment (run `uv sync`).")
+    else:
+        r = run("ruff", "check", "--fix", "--unfixable", "F401", "--quiet", path)
         if r is not None and r.returncode != 0:
             problems.append("ruff:\n" + (r.stdout or r.stderr).strip())
 
-        with open(path) as f:
-            problems += problems_in(f.read(), path)
+    with open(path) as f:
+        problems += problems_in(f.read(), path)
+    return problems + _sync_ipynb(path)
 
-        p = Path(path)
-        nb_dir = p.parent.parent if p.parent.name == "py" else Path("notebooks")
-        nb_dir.mkdir(parents=True, exist_ok=True)
-        sync_res = run("jupytext", "--sync", path)
-        if sync_res is None:
-            problems.append(
-                "jupytext is not installed or not found in environment (run `uv sync`)."
-            )
-        elif sync_res.returncode != 0:
-            err = (sync_res.stdout or sync_res.stderr).strip()
-            problems.append(f"jupytext --sync failed:\n{err}")
-        else:
-            expected_ipynb = nb_dir / f"{p.stem}.ipynb"
-            if p.parent.name == "py" and not expected_ipynb.exists():
-                problems.append(
-                    f"jupytext --sync completed but {expected_ipynb} was not generated. "
-                    "Check jupytext.toml pairing."
-                )
 
+def main(paths):
+    failed = False
+    for path in paths:
+        problems = check_one_notebook(path)
         if problems:
             failed = True
-            print(f"{path} breaks the notebook rules in AGENTS.md:")
-            for p in problems:
-                print(f"- {p}")
+            print(f"{path} breaks the notebook rules in write-code/SKILL.md:")
+            for item in problems:
+                print(f"- {item}")
         else:
             print(f"{path}: ok")
     sys.exit(1 if failed else 0)

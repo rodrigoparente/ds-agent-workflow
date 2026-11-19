@@ -15,7 +15,7 @@ We follow a collaborative, human-in-the-loop workflow: **Research (optional) →
 | Research (optional) | `researcher` | `docs/research/<topic>.md` | Agent searches & summarizes |
 | Spec | `experiment-spec` | `specs/<NN-name>.md` (`draft → approved → executed`) | Collaborative agreement |
 | Data Reference | `data-catalog` | Reference for lake tables, schemas & recipes | Reference guide |
-| Code | `write-notebook` (or scripts/apps) | `notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`, `scripts/`, `apps/`, `tests/` | Agent formats, lints & auto-syncs |
+| Code | `write-code` | `notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`, `scripts/`, `apps/`, `tests/` | Agent formats, lints, tests & auto-syncs |
 | Execution | User runs code | Execution outputs in `notebooks/`, `models/`, `data/`, or terminal | **User runs always** |
 | Report | `experiment-report` | `docs/reports/<NN-name>.md` (Word / PDF on request) | Agent reads outputs |
 | Presentation | `make-presentation` | `docs/slides/<NN-name>.md` outline, then `.pptx` | Collaborative alignment & deck build |
@@ -25,14 +25,14 @@ We follow a collaborative, human-in-the-loop workflow: **Research (optional) →
 ```
 specs/                        <NN-name>.md (authoritative specs, OpenSpec-style)
 notebooks/
-  ├── <NN-name>.ipynb         executed notebook (run by user, git-ignored)
-  └── py/<NN-name>.py         notebook source of truth (git-tracked, auto-synced)
+  ├── <NN-name>.ipynb         executed notebook (run by user; outputs stripped in Git via nbstripout)
+  └── py/<NN-name>.py         notebook source of truth (edited by agent, auto-synced via Jupytext)
 models/                       serialized models and artifacts (git-ignored)
 apps/                         interactive apps, dashboards, and API services
 scripts/                      standalone scripts, pipelines, shared modules, deck builders
 tests/                        test_<name>.py (unit and integration tests)
 docs/
-  ├── reports/<NN-name>.md    results and analysis summary (+ .docx / .pdf)
+  ├── reports/<NN-name>.md    results and analysis summary (+ .docx on request)
   ├── slides/<NN-name>.md     executive slide outline and deck (.pptx)
   ├── research/<topic>.md     optional research briefs
   └── figures/<NN-name>_*.png saved charts and visualizations
@@ -40,11 +40,11 @@ data/                         cached local datasets (<NN-name>.parquet, git-igno
 ```
 
 - **Naming:** Initiatives are named in kebab-case with a two-digit sequential number (`01-sales-eda`, `02-baseline`). Every associated file uses this exact prefix.
-- **Notebooks:** `notebooks/py/<NN-name>.py` is the source of truth; `check_notebook.py` automatically generates and syncs `notebooks/<NN-name>.ipynb`. Run results are inspected through `.agents/tools/nb_summary.py`.
+- **Notebooks:** `notebooks/py/<NN-name>.py` is the source of truth edited by the agent; `check_notebook.py` automatically generates and syncs `notebooks/<NN-name>.ipynb`. In Git, `nbstripout` strips heavy cell outputs on commit while preserving local outputs on disk so `.agents/tools/nb_summary.py` can inspect run results.
 
 ## Collaboration Principles
 
-- **Dialog Boxes for Strategic Decisions & Brainstorming (Use Judiciously):** Use the interactive dialog box (`ask_question` tool) specifically when **brainstorming ideas, clarifying open-ended requirements, choosing between technical trade-offs, or aligning on narrative framing/direction**.
+- **Dialog Boxes for Strategic Decisions & Brainstorming (Use Judiciously):** Use your interactive multiple-choice question tool (`ask_question` / `AskUserQuestion`) specifically when **brainstorming ideas, clarifying open-ended requirements, choosing between technical trade-offs, or aligning on narrative framing/direction**.
   - Present structured, actionable choices with a recommended option first (`(Recommended) ...`).
   - Do not add manual "Other" options in the array—the UI automatically adds an "Other" option and freeform chat input.
   - **Do NOT spam dialog boxes for routine updates:** Never show a dialog box just to ask "What should we do next?" after completing a routine request or file edit. Simply summarize the outcome in plain chat text and let the user direct the next action.
@@ -70,7 +70,8 @@ Follow a minimal-code ladder:
 - **Run application / service:** `uv run <app-command>` (e.g. `streamlit`, `uvicorn`, or `python apps/<name>.py`)
 
 ### Agent Allowed Operations & CLI Tools
-- **File & Directory Operations (Allowed):** Reading, writing, editing, and listing project files (`specs/`, `notebooks/py/`, `models/`, `apps/`, `scripts/`, `tests/`, `docs/`) and running static linters (`uv run ruff check`, `uv run ruff format`) or unit tests (`uv run pytest`) are always allowed. *(Never read/edit `notebooks/*.ipynb` directly—use `notebooks/py/*.py` and `nb_summary.py`).*
+- **File & Directory Operations (Allowed):** Reading, writing, editing, and listing project files (`specs/`, `notebooks/py/`, `apps/`, `scripts/`, `tests/`, `docs/`) and running static linters (`uv run ruff check`, `uv run ruff format`) or unit tests (`uv run pytest`) are always allowed. *(Never read/edit `notebooks/*.ipynb` or raw data in `data/` directly—use `notebooks/py/*.py`, `nb_summary.py`, and `data-catalog`).*
 - **Static check & auto-sync notebook (does NOT execute code):** `uv run python .agents/tools/check_notebook.py notebooks/py/<NN-name>.py`
 - **Read executed notebook outputs (after user runs it):** `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
+- **Export report to Word (`.docx`):** `uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
 - **Compile PowerPoint slide deck:** `uv run python scripts/build_<NN-name>_deck.py`

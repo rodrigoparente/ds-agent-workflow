@@ -5,36 +5,22 @@ description: Generate a clear, verified summary report from executed notebook or
 
 # Experiment Report
 
-Transforms executed notebook or script outputs into a concise, verified summary report.
+Transforms executed notebook or script outputs into a concise, verified summary report in `docs/reports/<NN-name>.md`.
 
 ## Process
 
-1. **Verify inputs:**
-   Read `specs/<NN-name>.md`.
-   Extract run outputs:
-   - *For notebooks (`notebooks/<NN-name>.ipynb`):* Run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`. If no outputs are present, STOP and ask the user to execute the notebook in Jupyter Lab (`uv run jupyter lab`) first (do not execute it yourself; see `AGENTS.md`).
-   - *For scripts, apps, or services (`scripts/`, `apps/`):* Run `uv run pytest` (if unit/integration tests exist in `tests/`) and review user-shared execution outputs, saved artifacts (`models/`, `data/`), or figures (`docs/figures/`).
-2. **Draft or update report:**
-   Populate `assets/report-template.md` and save to `docs/reports/<NN-name>.md` (when updating an existing report after a new iteration, re-verify all sections against the latest outputs):
-   - Ground every metric, pattern, and claim directly in the actual outputs.
-   - Summarize key findings, visual trends, or benchmark tables.
-   - Include caveats, failure modes, and open questions with equal weight as successes.
-   - Reference figures as `../figures/<NN-name>_<what>.png`.
-   - Keep total length under two pages.
-3. **Verify claims against outputs:**
-   Audit `docs/reports/<NN-name>.md` against `specs/<NN-name>.md` and the `nb_summary.py` (or script) outputs before finalizing:
-   - **Numerical accuracy:** Trace every stated metric, percentage lift, and comparison back to its originating cell output; fix any discrepancy.
-   - **Grounded conclusions:** Remove any causal or speculative claims not directly backed by the executed run.
-   - **Completeness:** Ensure baseline comparisons (for modeling experiments) and all spec `## Done When` items are addressed.
-4. **Update spec lifecycle:**
-   Update `specs/<NN-name>.md` from `Status: approved` to `Status: executed`.
-5. **Present summary:**
-   Share the TL;DR and key observations in chat with a direct link to `docs/reports/<NN-name>.md`. Mention that Word (`.docx`) or PDF versions can be generated on request, and wait for the user's direction in chat.
-6. **Optional document export:**
-   If the user requests a Word or PDF version:
-   - Ensure the optional `docs` dependency group (`python-docx`, `reportlab`, etc.) is installed via `uv sync --group docs`.
-   - Check if the required skill exists (`.agents/skills/docx` or `.agents/skills/pdf`). If not, download it on demand:
-     ```bash
-     uv run python .agents/tools/fetch_skill.py docx   # or pdf
-     ```
-   - Compile `docs/reports/<NN-name>.docx` (using `python-docx`) or `docs/reports/<NN-name>.pdf` (using `reportlab`). The markdown report remains the primary source of truth.
+1. **Verify inputs & outputs:**
+   Read `specs/<NN-name>.md` and extract actual outputs:
+   - *Notebooks (`notebooks/<NN-name>.ipynb`):* Run `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`. If no outputs are present, STOP and ask the user to run the notebook in Jupyter Lab first.
+   - *Scripts or apps (`scripts/`, `apps/`):* Run `uv run pytest` (if tests exist) and review user-shared outputs, saved artifacts (`models/`, `data/`), or `docs/figures/`.
+2. **Draft or update report (`docs/reports/<NN-name>.md`):**
+   Populate `assets/report-template.md` under 2 pages:
+   - Ground every metric, table, and claim in observed outputs; give caveats, failure modes, and open questions equal weight as successes.
+   - Reference charts as `../figures/<NN-name>_<what>.png`.
+3. **Audit claims before finalizing:**
+   - Trace every number, percentage lift, and comparison to an observed output; remove unsupported causal or speculative claims.
+   - Confirm baseline comparisons (if modeling) and all `## Done When` items in `specs/<NN-name>.md` are addressed.
+4. **Update spec & present summary:**
+   Update `specs/<NN-name>.md` to `Status: executed`. Share the TL;DR and key observations in chat with a link to `docs/reports/<NN-name>.md`, mention that a `.docx` export is available on request, and wait for user direction.
+5. **Optional Word (`.docx`) export:**
+   If requested, ensure `uv sync --group docs` is installed and run `uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md` (for PDF, open the `.docx` and Save as PDF; Markdown remains the source of truth).

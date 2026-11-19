@@ -1,2 +1,3 @@
-# Pairs notebooks/py/<name>.py (source, tracked by git) with notebooks/<name>.ipynb (what you run, git-ignored).
+# Pairs notebooks/py/<name>.py (flat Python source edited by the agent) with
+# notebooks/<name>.ipynb (executed by you in JupyterLab; outputs stripped in Git via nbstripout).
 formats = "notebooks///ipynb,notebooks/py///py:percent"

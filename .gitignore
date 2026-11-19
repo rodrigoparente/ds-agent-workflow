@@ -5,27 +5,18 @@ node_modules/
 __pycache__/
 *.pyc
 .ruff_cache/
+.pytest_cache/
 .ipynb_checkpoints/
 .DS_Store
+~$*
 
 # Secrets & local agent settings
 .env
 .env.*
+!.env.example
+!.env.template
 .claude/settings.local.json
 
-# On-demand document export skills
-.agents/skills/docx/
-.agents/skills/pdf/
-
-# Generated workflow & project outputs (template repo)
-uv.lock
-apps/
+# Heavy local data & serialized model artifacts
 data/
-docs/
 models/
-notebooks/
-scripts/
-specs/
-tests/
-*.ipynb
-~$*

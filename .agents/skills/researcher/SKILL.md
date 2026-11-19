@@ -5,20 +5,18 @@ description: Research a topic, algorithm, technique, or dataset across academic 
 
 # Researcher
 
-Researches external literature, industry benchmarks, and open-source implementations to provide an objective technical briefing.
-
-The output is always written to `docs/research/<topic>.md`.
+Researches external literature, industry benchmarks, and open-source implementations into an objective technical brief at `docs/research/<topic>.md`.
 
 ## Process
 
-1. **Scope, clarify, and interact (Use Dialog Box):**
-   Understand the user's intent. If the inquiry is broad or open-ended, present 2–3 specific research angles or key constraints (e.g. latency vs. accuracy, CPU scale vs. distributed) via the **dialog box (`ask_question` tool)** so the user can easily select an angle or provide custom instructions via "Other".
+1. **Scope & clarify:**
+   If the inquiry is broad or open-ended, propose 2–3 research angles or constraints (e.g., latency vs. accuracy, single-node vs. distributed) via `ask_question`.
 2. **Targeted investigation:**
-   Perform focused searches across academic literature (arXiv, conference proceedings), engineering blogs, GitHub repositories, and official documentation. Inspect source content directly to verify findings.
-3. **Compile technical brief:**
-   Write `docs/research/<topic>.md` (at most 2 pages) using the structure below.
-4. **Summary & collaborative handoff:**
-   Provide a concise 3-line summary in chat with the path to the research file, highlight 1–2 key trade-offs discovered, and wait for the user's direction in chat.
+   Search academic literature (arXiv, conference proceedings), engineering blogs, GitHub repositories, and official docs; inspect primary sources directly to verify claims.
+3. **Compile brief (`docs/research/<topic>.md`):**
+   Write at most 2 pages using the structure below, focusing on verifiable facts, source-backed benchmarks, and objective trade-offs (distinguishing demonstrated results from theoretical claims).
+4. **Handoff:**
+   Share a 3-line summary in chat with a link to `docs/research/<topic>.md`, highlight 1–2 key trade-offs, and wait for user direction.
 
 ## Brief Structure
 
@@ -45,9 +43,3 @@ Key architectural choices and evaluation trade-offs for the user to consider.
 ## Sources
 Cited articles, documentation, and repositories reviewed.
 ```
-
-## Quality Guidelines
-
-- Focus on verifiable facts and source-backed benchmarks.
-- Clearly differentiate demonstrated results from theoretical claims.
-- Present trade-offs objectively across simplicity, accuracy, and compute requirements.
