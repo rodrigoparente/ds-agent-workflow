@@ -44,10 +44,13 @@ def collapse_strings(text):
 
 
 def run(*cmd):
-    """Run a tool through uv if available, else directly. Returns None if not installed."""
+    """Run a tool through uv, .venv/bin, or PATH. Returns None if not installed."""
+    venv_tool = Path(".venv") / "bin" / cmd[0]
     if shutil.which("uv"):
         sync_flag = ("--no-sync",) if Path(".venv").exists() else ()
         cmd = ("uv", "run", *sync_flag, "--quiet") + cmd
+    elif venv_tool.exists():
+        cmd = (str(venv_tool),) + cmd[1:]
     elif not shutil.which(cmd[0]):
         return None
     return subprocess.run(cmd, capture_output=True, text=True)
@@ -133,11 +136,21 @@ def structural_problems(tree):
     return out
 
 
-def cell_problems(cells):
+def _count_code_lines(text):
+    """Return total non-comment code lines across all code cells in text."""
+    total = 0
+    for kind, lines in parse_cells(collapse_strings(text)):
+        if kind == "code":
+            total += sum(1 for ln in lines if not ln.lstrip().startswith("#"))
+    return total
+
+
+def cell_problems(cells, before_code_lines=None):
     """Check per-cell and total code-line budgets and markdown headers."""
     out = []
     n_code = 0
     total_code_lines = 0
+    cell_sizes = []
     for i, (kind, lines) in enumerate(cells):
         if kind != "code":
             continue
@@ -146,6 +159,7 @@ def cell_problems(cells):
             out.append("The first code cell must be `# %pip install -q <packages>`.")
         code_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
         total_code_lines += len(code_lines)
+        cell_sizes.append((len(code_lines), i + 1))
         if len(code_lines) > MAX_CELL:
             out.append(
                 f"Cell {i + 1} has {len(code_lines)} code lines (max {MAX_CELL}). "
@@ -156,14 +170,21 @@ def cell_problems(cells):
                 f"Cell {i + 1} has no markdown cell before it (what + why in 1-2 sentences)."
             )
     if total_code_lines > MAX_LINES:
+        top = ", ".join(f"Cell {idx} ({cnt})" for cnt, idx in sorted(cell_sizes, reverse=True)[:3])
+        fmt_note = (
+            f" Note: `ruff format` expanded code from "
+            f"{before_code_lines} to {total_code_lines} lines."
+            if before_code_lines is not None and total_code_lines > before_code_lines
+            else ""
+        )
         out.append(
             f"{total_code_lines} total code lines (max {MAX_LINES}). "
-            "Cut scope creep or move reusable helpers to scripts/."
+            f"Cut scope creep or move reusable helpers to scripts/. Largest cells: {top}.{fmt_note}"
         )
     return out
 
 
-def problems_in(text, path="."):
+def problems_in(text, path=".", before_code_lines=None):
     try:
         tree = ast.parse(text)
     except SyntaxError:
@@ -179,7 +200,7 @@ def problems_in(text, path="."):
     cells = parse_cells(collapse_strings(text))
     if not cells or cells[0][0] != "md":
         out.append("First cell must be markdown: title, overview/question, and spec link.")
-    return out + cell_problems(cells)
+    return out + cell_problems(cells, before_code_lines=before_code_lines)
 
 
 def _sync_ipynb(path: str) -> list[str]:
@@ -205,6 +226,9 @@ def _sync_ipynb(path: str) -> list[str]:
 def check_one_notebook(path: str) -> list[str]:
     """Format, lint, validate, and sync a single notebook .py file."""
     problems = []
+    with open(path) as f:
+        before_code_lines = _count_code_lines(f.read())
+
     fmt_res = run("ruff", "format", path)
     if fmt_res is None:
         problems.append("ruff is not installed or not found in environment (run `uv sync`).")
@@ -214,7 +238,7 @@ def check_one_notebook(path: str) -> list[str]:
             problems.append("ruff:\n" + (r.stdout or r.stderr).strip())
 
     with open(path) as f:
-        problems += problems_in(f.read(), path)
+        problems += problems_in(f.read(), path, before_code_lines=before_code_lines)
     return problems + _sync_ipynb(path)
 
 

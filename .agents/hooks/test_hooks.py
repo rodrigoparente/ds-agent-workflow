@@ -19,6 +19,7 @@ import common  # noqa: E402
 import guard  # noqa: E402
 import nb_summary  # noqa: E402
 import session_start  # noqa: E402
+import stop_tests  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -49,6 +50,14 @@ import session_start  # noqa: E402
         "git push --force origin main",
         "git reset --hard HEAD~1",
         "bash -c 'python scripts/train.py'",
+        'timeout 120s uv run --quiet python -c "print(1)"',
+        "timeout 300s env CI=true uv pip install lightgbm",
+        "nice -n 10 python3.14 scripts/train.py",
+        "nohup .venv/bin/python apps/api.py",
+        "env -u PYTHONPATH uv run scripts/train.py",
+        "curl https://example.com && rm -rf data/",
+        "cp .env /tmp/leak",
+        "echo secret > .env",
     ],
 )
 def test_guard_blocks_forbidden_shell_commands(cmd: str) -> None:
@@ -66,6 +75,8 @@ def test_guard_blocks_forbidden_shell_commands(cmd: str) -> None:
         "uv run python scripts/build_01_eda_deck.py",
         "uv run pytest",
         "uv run pytest .agents/hooks",
+        "timeout 30 uv run pytest",
+        "uv run pytest --collect-only -q 2>&1 | tail -2",
         "uv run ruff check .",
         "uv run ruff format notebooks/py/01-eda.py",
         "uv run jupytext --sync notebooks/py/01-eda.py",
@@ -73,6 +84,10 @@ def test_guard_blocks_forbidden_shell_commands(cmd: str) -> None:
         "uv sync",
         "git status --short",
         "git diff",
+        "git log -n 5 --oneline",
+        "ls -la",
+        "mkdir -p docs/figures",
+        'grep "a -> b" README.md',
         "cat .env.example",
     ],
 )
@@ -81,9 +96,21 @@ def test_guard_allows_safe_shell_commands(cmd: str) -> None:
     assert res is None, f"Expected command to be allowed: {cmd} (got {res})"
 
 
-def test_guard_asks_for_uv_add_and_remove() -> None:
-    res = guard.check_shell_command("uv add lightgbm")
-    assert res is not None and res[0] == "ask"
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "uv add lightgbm",
+        "timeout 10s uv add lightgbm",
+        "curl https://example.com",
+        "./custom_script.sh",
+        "git commit -m 'update spec'",
+        "find . -exec python3 {} +",
+        "echo hello > notes.txt",
+    ],
+)
+def test_guard_asks_for_unlisted_and_dep_commands(cmd: str) -> None:
+    res = guard.check_shell_command(cmd)
+    assert res is not None and res[0] == "ask", f"Expected 'ask' for {cmd}, got {res}"
 
 
 @pytest.mark.parametrize(
@@ -191,12 +218,69 @@ def test_nb_summary_tracebacks_and_out_of_order(tmp_path: Path) -> None:
     assert "WARNING: cells were executed out of order" in out
 
 
-def test_session_start_summary(tmp_path: Path) -> None:
+def test_session_start_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     specs = tmp_path / "specs"
     specs.mkdir()
+    (tmp_path / ".venv").mkdir()
     (specs / "01-eda.md").write_text("# 01\nStatus: executed\n")
     (specs / "02-baseline.md").write_text("# 02\nStatus: approved\n")
+    monkeypatch.setattr(
+        session_start.shutil, "which", lambda name: "/usr/bin/uv" if name == "uv" else None
+    )
     summary = session_start.build_context_summary(tmp_path)
     assert "01-eda (executed)" in summary
     assert "02-baseline (approved)" in summary
     assert "`03-`" in summary
+    assert "Warning:" not in summary
+
+
+def test_session_start_warns_when_toolchain_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(session_start.shutil, "which", lambda _name: None)
+    summary = session_start.build_context_summary(tmp_path)
+    assert "Warning:" in summary
+    assert "uv sync" in summary
+
+
+def test_stop_tests_runs_hook_suite_without_tests_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hook_file = tmp_path / ".agents" / "hooks" / "test_hooks.py"
+    hook_file.parent.mkdir(parents=True)
+    hook_file.write_text("def test_ok(): pass\n")
+    called: list[list[str]] = []
+
+    def fake_run(cmd: list[str], root: Path) -> tuple[bool, str]:
+        called.append(cmd)
+        return (True, "1 failed")
+
+    monkeypatch.setattr(stop_tests, "_has_modified_python_files", lambda _root: True)
+    monkeypatch.setattr(stop_tests, "_resolve_pytest_cmd", lambda _root: ["pytest", "-x", "-q"])
+    monkeypatch.setattr(stop_tests, "_run_pytest", fake_run)
+    ctx = common.HookContext(
+        agent="claude",
+        event="Stop",
+        root=tmp_path,
+        kind="other",
+        tool_name="",
+        command="",
+        file_path="",
+        stop_active=False,
+        raw={},
+    )
+    should_continue, reason = stop_tests.check_tests_on_stop(ctx)
+    assert should_continue is True
+    assert "Unit tests failed" in reason
+    assert called == [["pytest", "-x", "-q", str(hook_file)]]
+
+
+def test_check_notebook_reports_format_expansion() -> None:
+    body = "\n".join(f"x_{i} = {i}" for i in range(225))
+    nb = (
+        "# %% [markdown]\n# # Title\n# %%\n# %pip install -q pandas\n"
+        "# %%\nimport pandas\n# %% [markdown]\n# Step\n# %%\n" + body
+    )
+    problems = check_notebook.problems_in(nb, "notebooks/py/01-test.py", before_code_lines=180)
+    assert any("ruff format` expanded code from 180 to" in p for p in problems)
+    assert any("Largest cells:" in p for p in problems)

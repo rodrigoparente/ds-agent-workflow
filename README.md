@@ -86,10 +86,10 @@ Skills live in `.agents/skills/` (linked at `.claude/skills`) and follow the rul
 - **Export report to Word (`.docx`):** `uv sync --group docs && uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
 
 ### Automated Lifecycle Hooks (`.agents/hooks/`)
-- **`guard.py` (`PreToolUse`):** Enforces the experiment execution ban, blocks direct reads/edits of `notebooks/*.ipynb`, protects raw `data/` (PII) and `.env` / `~/.ssh` secrets, blocks raw `pip install`, and prevents destructive git/shell commands.
+- **`guard.py` (`PreToolUse`):** Enforces the experiment execution ban, blocks direct reads/edits of `notebooks/*.ipynb`, protects raw `data/` (PII) and `.env` / `~/.ssh` secrets, blocks raw `pip install`, prevents destructive git/shell commands, and prompts (`ask`) before running any unrecognized shell command.
 - **`lint.py` (`PostToolUse`):** Automatically runs `check_notebook.py` when `notebooks/py/*.py` is edited, and runs `ruff format` + `ruff check` on any other edited `.py` file.
-- **`stop_tests.py` (`Stop`):** Runs `uv run pytest -x -q` before the agent finishes a turn whenever Python files were modified and unit tests exist in `tests/`.
-- **`session_start.py` (`SessionStart`):** Injects a compact 2-line summary of the active Git branch, existing specs (`draft` / `approved` / `executed`), and next sequential initiative number (`NN`), and ensures the `nbstripout` Git filter is installed.
+- **`stop_tests.py` (`Stop`):** Runs `uv run pytest -x -q` before the agent finishes a turn whenever Python files were modified and unit tests exist in `tests/` or `.agents/hooks/test_hooks.py`.
+- **`session_start.py` (`SessionStart`):** Injects a compact summary of the active Git branch, existing specs (`draft` / `approved` / `executed`), and next sequential initiative number (`NN`), ensures the `nbstripout` Git filter is installed, and warns if required workspace tooling is missing.
 
 ### Customizing Permissions & Guardrails
 To add project- or company-specific credential paths or blocked CLI tools:

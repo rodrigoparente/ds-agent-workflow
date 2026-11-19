@@ -20,34 +20,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import emit_session_start, parse_payload
 
 
-def ensure_nbstripout_installed(root: Path) -> None:
-    """Idempotently register nbstripout git filter in `.git/config` if not already configured."""
-    git_dir = root / ".git"
-    if not git_dir.exists() or not shutil.which("git"):
-        return
+def _has_nbstripout_filter(root: Path) -> bool:
+    """Return True if git filter.nbstripout.clean is configured in this repository."""
+    if not (root / ".git").exists() or not shutil.which("git"):
+        return False
     chk = subprocess.run(
         ["git", "config", "--get", "filter.nbstripout.clean"],
         capture_output=True,
         text=True,
         cwd=root,
     )
-    if chk.returncode == 0 and chk.stdout.strip():
+    return chk.returncode == 0 and bool(chk.stdout.strip())
+
+
+def ensure_nbstripout_installed(root: Path) -> None:
+    """Idempotently register nbstripout git filter in `.git/config` if not already configured."""
+    if not (root / ".git").exists() or not shutil.which("git") or _has_nbstripout_filter(root):
         return
+    venv_nbstripout = root / ".venv" / "bin" / "nbstripout"
     if shutil.which("uv"):
         sync_flag = ("--no-sync",) if (root / ".venv").exists() else ()
-        subprocess.run(
-            ["uv", "run", *sync_flag, "--quiet", "nbstripout", "--install"],
-            capture_output=True,
-            text=True,
-            cwd=root,
-        )
+        cmd = ["uv", "run", *sync_flag, "--quiet", "nbstripout", "--install"]
+    elif venv_nbstripout.exists():
+        cmd = [str(venv_nbstripout), "--install"]
     elif shutil.which("nbstripout"):
-        subprocess.run(
-            ["nbstripout", "--install"],
-            capture_output=True,
-            text=True,
-            cwd=root,
-        )
+        cmd = ["nbstripout", "--install"]
+    else:
+        return
+    subprocess.run(cmd, capture_output=True, text=True, cwd=root)
 
 
 def _read_spec_status(spec_path: Path) -> str:
@@ -97,7 +97,34 @@ def build_context_summary(root: Path) -> str:
     else:
         lines.append(f"Specs: none yet | Next initiative prefix: `{next_nn}-`")
 
+    warnings = _toolchain_warnings(root)
+    lines.extend(warnings)
     return "\n".join(lines)
+
+
+def _toolchain_warnings(root: Path) -> list[str]:
+    """Return concise warning lines only when required workspace tooling is missing."""
+    warnings: list[str] = []
+    has_uv = bool(shutil.which("uv"))
+    has_venv = (root / ".venv").exists()
+    if not has_uv and not has_venv:
+        warnings.append(
+            "Warning: `uv` not found on PATH and `.venv/` is missing; "
+            "install `uv` and run `uv sync`."
+        )
+    elif not has_uv:
+        warnings.append(
+            "Warning: `uv` not found on PATH; hooks will fall back to `.venv/bin/` where present."
+        )
+    elif not has_venv:
+        warnings.append(
+            "Warning: `.venv/` is missing; run `uv sync` to enable lint, notebook sync, and tests."
+        )
+    if (root / ".git").exists() and shutil.which("git") and not _has_nbstripout_filter(root):
+        warnings.append(
+            "Warning: `nbstripout` git filter is not configured; run `uv run nbstripout --install`."
+        )
+    return warnings
 
 
 def main() -> None:

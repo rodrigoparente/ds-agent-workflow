@@ -20,9 +20,12 @@ from common import HookContext, emit_post_tool_feedback, parse_payload
 
 
 def _run_tool(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+    venv_tool = root / ".venv" / "bin" / args[0]
     if shutil.which("uv"):
         sync_flag = ("--no-sync",) if (root / ".venv").exists() else ()
         cmd = ("uv", "run", *sync_flag, "--quiet", *args)
+    elif venv_tool.exists():
+        cmd = (str(venv_tool), *args[1:])
     elif shutil.which(args[0]):
         cmd = args
     else:
@@ -51,7 +54,12 @@ def check_edited_file(ctx: HookContext) -> str:
         return ""
 
     # Standard Python files (scripts/, apps/, tests/, etc.)
-    _run_tool(ctx.root, "ruff", "format", "--quiet", str(target))
+    fmt = _run_tool(ctx.root, "ruff", "format", "--quiet", str(target))
+    if fmt is None:
+        return (
+            f"ruff is not installed or not found in environment (run `uv sync`) "
+            f"while checking {rel}."
+        )
     r = _run_tool(
         ctx.root,
         "ruff",
