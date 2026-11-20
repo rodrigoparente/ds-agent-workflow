@@ -1,7 +1,7 @@
 [project]
 name = "ds-project"
 version = "0.1.0"
-description = "Tooling for the notebooks. Each notebook installs its own packages with %pip."
+description = "Workspace tooling for data science notebooks, scripts, apps, and slide decks."
 requires-python = ">=3.11"
 dependencies = [
     "jupyterlab",
@@ -29,11 +29,8 @@ max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
 "notebooks/py/*.py" = ["E402", "E501"]
-"scripts/*.py" = ["E402", "E501"]
-"apps/*.py" = ["E402", "E501"]
-"tests/*.py" = ["E402", "E501"]
 ".agents/skills/make-presentation/assets/deck_components.py" = ["B008", "C901"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", ".agents/hooks"]
 pythonpath = [".", "scripts"]

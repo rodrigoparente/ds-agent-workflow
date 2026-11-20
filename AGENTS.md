@@ -6,7 +6,7 @@ We follow a collaborative, human-in-the-loop workflow: **Research (optional) →
 - **Flexible & Intuitive:** You do not need to use rigid magic words. Natural prompts ("I want to know more about X", "Let's explore X", "Can we build X?", "Why did X happen?") route directly to the right skill.
 - **Interactive First, Never Robotic:** Discuss ideas, ask clarifying questions, present trade-offs, and confirm direction before making unilateral assumptions.
 - **Spec First (Even on Edits):** Every piece of work begins with an agreed spec in `specs/<NN-name>.md`. Whenever modifying, fixing, or adding to an existing experiment, **update the spec FIRST** (via `experiment-spec`) before editing code.
-- **User in the Driver's Seat (Experiment Execution Ban):** The agent is a **code copilot, never an experiment runner**. The agent **NEVER executes notebooks (`notebooks/py/*.py`, `notebooks/*.ipynb`), data/experiment scripts (`scripts/*.py`), apps (`apps/*.py`), or inline Python (`python -c`)**—not even as a smoke test. The agent writes/edits code, runs static checks (`check_notebook.py` / `ruff`), auto-syncs `.ipynb`, runs unit/contract tests (`pytest`), and compiles slide decks (`scripts/build_*_deck.py`). The user **always** runs experiments in Jupyter Lab or their terminal.
+- **User in the Driver's Seat:** The agent is a **code copilot, never an experiment runner**. You write/edit code, run static checks and unit tests, and prepare artifacts—the user **always** runs experiments, notebooks, pipelines, and app servers in Jupyter Lab or their terminal.
 - **No Forced Goals:** Exploratory data analysis (EDA), data pipelines, prototypes, and open-ended investigations without fixed metrics are fully supported.
 - **Start Simple:** Establish the simplest working solution first, adding complexity only when data or user requirements justify it.
 
@@ -17,7 +17,7 @@ We follow a collaborative, human-in-the-loop workflow: **Research (optional) →
 | Data Reference | `data-catalog` | Reference for lake tables, schemas & recipes | Reference guide |
 | Code | `write-code` | `notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`, `scripts/`, `apps/`, `tests/` | Agent formats, lints, tests & auto-syncs |
 | Execution | User runs code | Execution outputs in `notebooks/`, `models/`, `data/`, or terminal | **User runs always** |
-| Report | `experiment-report` | `docs/reports/<NN-name>.md` (Word / PDF on request) | Agent reads outputs |
+| Report | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent reads outputs |
 | Presentation | `make-presentation` | `docs/slides/<NN-name>.md` outline, then `.pptx` | Collaborative alignment & deck build |
 
 ## Repository Layout
@@ -61,6 +61,14 @@ Follow a minimal-code ladder:
 4. Keep code flat and readable: avoid single-use functions, classes, config objects, and defensive wrappers.
 5. Protect data integrity: retain essential validation checks (shapes, column types, split leak prevention, random seeds).
 
+## Agent Boundaries
+
+- **You generate, the user runs.** Never run what we create in `notebooks/`, `scripts/` (except `scripts/build_<NN-name>_deck.py`), or `apps/` (app servers/services) unless explicitly asked. Hand off with the exact command to run.
+- **Allowed agent commands:** Quick probes (`python -c`, short snippets on synthetic data), `pytest`, `ruff`, `.agents/tools/` helpers (`check_notebook.py`, `nb_summary.py`, `export_docx.py`), `scripts/build_<NN-name>_deck.py`, and ordinary read-only shell commands. Keep probes to a few seconds and off real data.
+- **Don't read** `data/` (use the `data-catalog` skill), `.env*`, or `~/.ssh`.
+- **Never open or edit `notebooks/*.ipynb`.** Edit `notebooks/py/<NN-name>.py`; read run outputs with `nb_summary.py`.
+- **Confirm before destructive or irreversible actions** (`rm -rf`, `git push --force`, `git reset --hard`, `uv add/remove`) unless the user explicitly asked for exactly that.
+
 ## Core Commands
 
 ### User Commands (Run by the User)
@@ -69,9 +77,8 @@ Follow a minimal-code ladder:
 - **Run standalone script:** `uv run python scripts/<name>.py`
 - **Run application / service:** `uv run <app-command>` (e.g. `streamlit`, `uvicorn`, or `python apps/<name>.py`)
 
-### Agent Allowed Operations & CLI Tools
-- **File & Directory Operations (Allowed):** Reading, writing, editing, and listing project files (`specs/`, `notebooks/py/`, `apps/`, `scripts/`, `tests/`, `docs/`) and running static linters (`uv run ruff check`, `uv run ruff format`) or unit tests (`uv run pytest`) are always allowed. *(Never read/edit `notebooks/*.ipynb` or raw data in `data/` directly—use `notebooks/py/*.py`, `nb_summary.py`, and `data-catalog`).*
+### Helper Tools (Run by Agent or User)
 - **Static check & auto-sync notebook (does NOT execute code):** `uv run python .agents/tools/check_notebook.py notebooks/py/<NN-name>.py`
 - **Read executed notebook outputs (after user runs it):** `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
-- **Export report to Word (`.docx`):** `uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
+- **Export report to Word (`.docx`):** `uv sync --group docs && uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
 - **Compile PowerPoint slide deck:** `uv run python scripts/build_<NN-name>_deck.py`

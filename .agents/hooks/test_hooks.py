@@ -16,147 +16,56 @@ sys.path.insert(0, str(ROOT / ".agents" / "tools"))
 
 import check_notebook  # noqa: E402
 import common  # noqa: E402
-import guard  # noqa: E402
+import lint  # noqa: E402
 import nb_summary  # noqa: E402
 import session_start  # noqa: E402
 import stop_tests  # noqa: E402
 
 
-@pytest.mark.parametrize(
-    "cmd",
-    [
-        "uv run python scripts/train.py",
-        "uv run python scripts/train.py && uv run pytest",
-        "python -c 'print(1)'  # pytest",
-        "uv run scripts/train.py",
-        "cd notebooks/py && python 01-eda.py",
-        "uv run python -m scripts.train",
-        "uv run python - <<'EOF'\nimport pandas\nEOF",
-        "uv run jupytext --execute notebooks/py/01-eda.py",
-        "uv run marimo run apps/app.py",
-        "uv run fastapi dev apps/api.py",
-        "uv run streamlit run apps/dashboard.py",
-        "uv run uvicorn apps.api:app",
-        "cat notebooks/01-eda.ipynb",
-        "head -n 20 data/01-sales.parquet",
-        "cat .env",
-        "cat .env.production",
-        "cat ~/.ssh/id_rsa",
-        "uv run ruff check scripts/ ; uv run python scripts/train.py",
-        "pip install pandas",
-        "uv pip install scikit-learn",
-        "python3 -m pip install torch",
-        "rm -rf data/",
-        "git push --force origin main",
-        "git reset --hard HEAD~1",
-        "bash -c 'python scripts/train.py'",
-        'timeout 120s uv run --quiet python -c "print(1)"',
-        "timeout 300s env CI=true uv pip install lightgbm",
-        "nice -n 10 python3.14 scripts/train.py",
-        "nohup .venv/bin/python apps/api.py",
-        "env -u PYTHONPATH uv run scripts/train.py",
-        "curl https://example.com && rm -rf data/",
-        "cp .env /tmp/leak",
-        "echo secret > .env",
-    ],
-)
-def test_guard_blocks_forbidden_shell_commands(cmd: str) -> None:
-    res = guard.check_shell_command(cmd)
-    assert res is not None, f"Expected command to be blocked: {cmd}"
-    assert res[0] == "deny"
-
-
-@pytest.mark.parametrize(
-    "cmd",
-    [
-        "uv run python .agents/tools/check_notebook.py notebooks/py/01-eda.py",
-        "uv run python .agents/tools/nb_summary.py notebooks/01-eda.ipynb",
-        "uv run python .agents/tools/export_docx.py docs/reports/01-eda.md",
-        "uv run python scripts/build_01_eda_deck.py",
-        "uv run pytest",
-        "uv run pytest .agents/hooks",
-        "timeout 30 uv run pytest",
-        "uv run pytest --collect-only -q 2>&1 | tail -2",
-        "uv run ruff check .",
-        "uv run ruff format notebooks/py/01-eda.py",
-        "uv run jupytext --sync notebooks/py/01-eda.py",
-        "uv run nbstripout --install",
-        "uv sync",
-        "git status --short",
-        "git diff",
-        "git log -n 5 --oneline",
-        "ls -la",
-        "mkdir -p docs/figures",
-        'grep "a -> b" README.md',
-        "cat .env.example",
-    ],
-)
-def test_guard_allows_safe_shell_commands(cmd: str) -> None:
-    res = guard.check_shell_command(cmd)
-    assert res is None, f"Expected command to be allowed: {cmd} (got {res})"
-
-
-@pytest.mark.parametrize(
-    "cmd",
-    [
-        "uv add lightgbm",
-        "timeout 10s uv add lightgbm",
-        "curl https://example.com",
-        "./custom_script.sh",
-        "git commit -m 'update spec'",
-        "find . -exec python3 {} +",
-        "echo hello > notes.txt",
-    ],
-)
-def test_guard_asks_for_unlisted_and_dep_commands(cmd: str) -> None:
-    res = guard.check_shell_command(cmd)
-    assert res is not None and res[0] == "ask", f"Expected 'ask' for {cmd}, got {res}"
-
-
-@pytest.mark.parametrize(
-    ("rel", "expected"),
-    [
-        ("notebooks/01-eda.ipynb", "deny"),
-        ("data/01-sales.parquet", "deny"),
-        (".env", "deny"),
-        (".env.local", "deny"),
-        (".env.example", None),
-        ("notebooks/py/01-eda.py", None),
-        ("specs/01-eda.md", None),
-        ("scripts/helpers.py", None),
-    ],
-)
-def test_guard_file_path_checks(rel: str, expected: str | None) -> None:
-    res = guard.check_file_path(rel, rel)
-    if expected is None:
-        assert res is None
-    else:
-        assert res is not None and res[0] == expected
-
-
 def test_common_payload_detection_across_agents() -> None:
-    # 1. Antigravity payload
+    # 1. Antigravity CLI payload (`Path`)
     agy_payload = {
-        "hookEventName": "PreToolUse",
+        "hookEventName": "PostToolUse",
         "workspacePaths": [str(ROOT)],
-        "toolCall": {"name": "run_command", "args": {"CommandLine": "uv run pytest"}},
+        "toolCall": {"name": "edit_file", "args": {"Path": "scripts/helpers.py"}},
     }
     ctx_agy = common.parse_payload(io.StringIO(json.dumps(agy_payload)))
     assert ctx_agy.agent == "antigravity"
-    assert ctx_agy.kind == "shell"
-    assert ctx_agy.command == "uv run pytest"
+    assert ctx_agy.rel_path() == "scripts/helpers.py"
 
-    # 2. Claude Code payload
+    # 2. Antigravity IDE payload (`TargetFile`)
+    agy_ide_payload = {
+        "hookEventName": "PostToolUse",
+        "workspacePaths": [str(ROOT)],
+        "toolCall": {
+            "name": "replace_file_content",
+            "args": {"TargetFile": "scripts/helpers.py"},
+        },
+    }
+    ctx_ide = common.parse_payload(io.StringIO(json.dumps(agy_ide_payload)))
+    assert ctx_ide.agent == "antigravity"
+    assert ctx_ide.rel_path() == "scripts/helpers.py"
+
+    # 3. Claude Code payload
     claude_payload = {
-        "hook_event_name": "PreToolUse",
-        "tool_name": "Read",
-        "tool_input": {"file_path": "notebooks/01-eda.ipynb"},
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Edit",
+        "tool_input": {"file_path": "scripts/helpers.py"},
     }
     ctx_claude = common.parse_payload(io.StringIO(json.dumps(claude_payload)))
     assert ctx_claude.agent == "claude"
-    assert ctx_claude.kind == "read"
-    assert ctx_claude.rel_path() == "notebooks/01-eda.ipynb"
-    assert guard.evaluate(ctx_claude)[0] == "deny"
+    assert ctx_claude.rel_path() == "scripts/helpers.py"
+
+    # 4. Cursor native afterFileEdit / Stop payload
+    cursor_edit = {"file_path": "scripts/helpers.py", "edits": []}
+    ctx_cursor = common.parse_payload(io.StringIO(json.dumps(cursor_edit)))
+    assert ctx_cursor.agent == "cursor"
+    assert ctx_cursor.rel_path() == "scripts/helpers.py"
+
+    cursor_stop = {"loop_count": 1}
+    ctx_cursor_stop = common.parse_payload(io.StringIO(json.dumps(cursor_stop)))
+    assert ctx_cursor_stop.agent == "cursor"
+    assert ctx_cursor_stop.stop_active is True
 
 
 def test_check_notebook_ast_and_install_detection() -> None:
@@ -177,6 +86,22 @@ def test_check_notebook_ast_and_install_detection() -> None:
     problems = check_notebook.problems_in(bad_nb, "notebooks/py/01-test.py")
     assert any("scikit-learn" in p for p in problems)
     assert any("Class 'Foo'" in p for p in problems)
+
+
+def test_check_notebook_stops_on_format_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    nb_file = tmp_path / "01-broken.py"
+    nb_file.write_text("def broken(:\n")
+
+    class FailFmt:
+        returncode = 2
+        stdout = ""
+        stderr = "error: Failed to parse"
+
+    monkeypatch.setattr(check_notebook, "run", lambda *args: FailFmt())
+    problems = check_notebook.check_one_notebook(str(nb_file))
+    assert problems == ["ruff format:\nerror: Failed to parse"]
 
 
 def test_nb_summary_tracebacks_and_out_of_order(tmp_path: Path) -> None:
@@ -243,36 +168,113 @@ def test_session_start_warns_when_toolchain_missing(
     assert "uv sync" in summary
 
 
-def test_stop_tests_runs_hook_suite_without_tests_dir(
+def test_lint_routes_python_and_notebook_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    hook_file = tmp_path / ".agents" / "hooks" / "test_hooks.py"
-    hook_file.parent.mkdir(parents=True)
-    hook_file.write_text("def test_ok(): pass\n")
-    called: list[list[str]] = []
+    # Non-python file is skipped
+    md_file = tmp_path / "README.md"
+    md_file.write_text("# hi\n")
+    assert lint.check_edited_file(common.HookContext("claude", tmp_path, "README.md")) == ""
 
-    def fake_run(cmd: list[str], root: Path) -> tuple[bool, str]:
-        called.append(cmd)
-        return (True, "1 failed")
+    # Regular .py file invokes ruff format + check
+    py_file = tmp_path / "scripts" / "helpers.py"
+    py_file.parent.mkdir(parents=True)
+    py_file.write_text("x = 1\n")
+    calls: list[tuple[str, ...]] = []
 
-    monkeypatch.setattr(stop_tests, "_has_modified_python_files", lambda _root: True)
-    monkeypatch.setattr(stop_tests, "_resolve_pytest_cmd", lambda _root: ["pytest", "-x", "-q"])
-    monkeypatch.setattr(stop_tests, "_run_pytest", fake_run)
-    ctx = common.HookContext(
-        agent="claude",
-        event="Stop",
-        root=tmp_path,
-        kind="other",
-        tool_name="",
-        command="",
-        file_path="",
-        stop_active=False,
-        raw={},
+    class OkResult:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_tool(_root: Path, *args: str, timeout: int | None = None) -> OkResult:
+        calls.append(args)
+        return OkResult()
+
+    monkeypatch.setattr(lint, "run_project_tool", fake_tool)
+    assert (
+        lint.check_edited_file(common.HookContext("claude", tmp_path, "scripts/helpers.py")) == ""
     )
+    assert calls[0][:2] == ("ruff", "format")
+    assert calls[1][:2] == ("ruff", "check")
+
+
+def test_stop_tests_runs_project_tests_on_code_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_file = tmp_path / "tests" / "test_app.py"
+    test_file.parent.mkdir(parents=True)
+    test_file.write_text("def test_ok(): pass\n")
+    called: list[tuple[str, ...]] = []
+
+    class FakeResult:
+        returncode = 1
+        stdout = "1 failed"
+        stderr = ""
+
+    def fake_run(root: Path, *args: str, timeout: int | None = None) -> FakeResult:
+        called.append(args)
+        return FakeResult()
+
+    monkeypatch.setattr(stop_tests, "_changed_python_paths", lambda _root: ["scripts/a.py"])
+    monkeypatch.setattr(stop_tests, "run_project_tool", fake_run)
+    ctx = common.HookContext(agent="claude", root=tmp_path)
     should_continue, reason = stop_tests.check_tests_on_stop(ctx)
     assert should_continue is True
     assert "Unit tests failed" in reason
-    assert called == [["pytest", "-x", "-q", str(hook_file)]]
+    assert called == [("pytest", "-x", "-q", "tests")]
+
+
+def test_stop_tests_runs_hook_tests_when_hooks_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hook_tests = tmp_path / ".agents" / "hooks" / "test_hooks.py"
+    hook_tests.parent.mkdir(parents=True)
+    hook_tests.write_text("def test_ok(): pass\n")
+    called: list[tuple[str, ...]] = []
+
+    class OkResult:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(root: Path, *args: str, timeout: int | None = None) -> OkResult:
+        called.append(args)
+        return OkResult()
+
+    monkeypatch.setattr(
+        stop_tests, "_changed_python_paths", lambda _root: [".agents/hooks/common.py"]
+    )
+    monkeypatch.setattr(stop_tests, "run_project_tool", fake_run)
+    ctx = common.HookContext(agent="claude", root=tmp_path)
+    should_continue, reason = stop_tests.check_tests_on_stop(ctx)
+    assert should_continue is False
+    assert reason == ""
+    assert called == [("pytest", "-x", "-q", ".agents/hooks/test_hooks.py")]
+
+
+def test_stop_tests_skips_without_git_or_on_notebook_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Missing .git does not trigger pytest
+    test_file = tmp_path / "tests" / "test_app.py"
+    test_file.parent.mkdir(parents=True)
+    test_file.write_text("def test_ok(): pass\n")
+    assert stop_tests.check_tests_on_stop(common.HookContext("claude", tmp_path)) == (False, "")
+
+    # Notebook-only changes in git skip pytest
+    (tmp_path / ".git").mkdir()
+
+    class FakeResult:
+        returncode = 0
+        stdout = " M notebooks/py/01-eda.py\n?? docs/reports/01-eda.md\n"
+
+    monkeypatch.setattr(
+        stop_tests.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None
+    )
+    monkeypatch.setattr(stop_tests.subprocess, "run", lambda *a, **kw: FakeResult())
+    ctx = common.HookContext(agent="claude", root=tmp_path)
+    assert stop_tests.check_tests_on_stop(ctx) == (False, "")
 
 
 def test_check_notebook_reports_format_expansion() -> None:

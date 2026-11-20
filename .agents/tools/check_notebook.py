@@ -10,10 +10,12 @@ run it; coding agents also run it automatically through .agents/hooks/lint.py.
 
 import ast
 import re
-import shutil
-import subprocess
 import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / ".agents" / "hooks"))
+from common import run_project_tool  # noqa: E402
 
 # Keep these thresholds in sync with .agents/skills/write-code/SKILL.md
 MAX_LINES = 220  # max code lines across notebook (excluding markdown, comments, SQL)
@@ -45,15 +47,7 @@ def collapse_strings(text):
 
 def run(*cmd):
     """Run a tool through uv, .venv/bin, or PATH. Returns None if not installed."""
-    venv_tool = Path(".venv") / "bin" / cmd[0]
-    if shutil.which("uv"):
-        sync_flag = ("--no-sync",) if Path(".venv").exists() else ()
-        cmd = ("uv", "run", *sync_flag, "--quiet") + cmd
-    elif venv_tool.exists():
-        cmd = (str(venv_tool),) + cmd[1:]
-    elif not shutil.which(cmd[0]):
-        return None
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return run_project_tool(ROOT, *cmd)
 
 
 def parse_cells(text):
@@ -98,9 +92,9 @@ def missing_installs(tree, text, path):
     for name in sorted(names):
         here = [
             Path(path).parent / f"{name}.py",
-            Path(name),
-            Path("scripts") / f"{name}.py",
-            Path("scripts") / name,
+            ROOT / name,
+            ROOT / "scripts" / f"{name}.py",
+            ROOT / "scripts" / name,
         ]
         local = any(p.exists() for p in here)  # the project's own code, e.g. scripts/helpers.py
         if name in sys.stdlib_module_names or name in PROVIDED or local:
@@ -206,7 +200,7 @@ def problems_in(text, path=".", before_code_lines=None):
 def _sync_ipynb(path: str) -> list[str]:
     """Sync paired .ipynb via jupytext and return any sync errors."""
     nb_path = Path(path)
-    nb_dir = nb_path.parent.parent if nb_path.parent.name == "py" else Path("notebooks")
+    nb_dir = nb_path.parent.parent if nb_path.parent.name == "py" else ROOT / "notebooks"
     nb_dir.mkdir(parents=True, exist_ok=True)
     sync_res = run("jupytext", "--sync", path)
     if sync_res is None:
@@ -229,9 +223,12 @@ def check_one_notebook(path: str) -> list[str]:
     with open(path) as f:
         before_code_lines = _count_code_lines(f.read())
 
-    fmt_res = run("ruff", "format", path)
+    fmt_res = run("ruff", "format", "--quiet", path)
     if fmt_res is None:
         problems.append("ruff is not installed or not found in environment (run `uv sync`).")
+    elif fmt_res.returncode != 0:
+        problems.append("ruff format:\n" + (fmt_res.stderr or fmt_res.stdout).strip())
+        return problems
     else:
         r = run("ruff", "check", "--fix", "--unfixable", "F401", "--quiet", path)
         if r is not None and r.returncode != 0:

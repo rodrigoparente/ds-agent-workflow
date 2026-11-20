@@ -1,36 +1,14 @@
 #!/usr/bin/env python3
-"""PostToolUse hook for Antigravity, Claude Code, and Cursor.
-
-- On edited `notebooks/py/*.py`: runs `.agents/tools/check_notebook.py` (which formats, checks
-  notebook structure & package installs, and syncs the paired `notebooks/*.ipynb`).
-- On any other edited `*.py` file (`scripts/`, `apps/`, `tests/`): runs `ruff format` and
-  `ruff check --fix --unfixable F401` (preserving unused imports during multi-step edits while
-  reporting remaining lint issues back to the agent).
-"""
+"""PostToolUse hook: formats/lints edited Python files and syncs Jupytext notebooks."""
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HookContext, emit_post_tool_feedback, parse_payload
-
-
-def _run_tool(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
-    venv_tool = root / ".venv" / "bin" / args[0]
-    if shutil.which("uv"):
-        sync_flag = ("--no-sync",) if (root / ".venv").exists() else ()
-        cmd = ("uv", "run", *sync_flag, "--quiet", *args)
-    elif venv_tool.exists():
-        cmd = (str(venv_tool), *args[1:])
-    elif shutil.which(args[0]):
-        cmd = args
-    else:
-        return None
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=root)
+from common import HookContext, emit_post_tool_feedback, parse_payload, run_project_tool
 
 
 def check_edited_file(ctx: HookContext) -> str:
@@ -49,26 +27,15 @@ def check_edited_file(ctx: HookContext) -> str:
             text=True,
             cwd=ctx.root,
         )
-        if r.returncode != 0:
-            return (r.stdout + "\n" + r.stderr).strip()
-        return ""
+        return (r.stdout + "\n" + r.stderr).strip() if r.returncode != 0 else ""
 
-    # Standard Python files (scripts/, apps/, tests/, etc.)
-    fmt = _run_tool(ctx.root, "ruff", "format", "--quiet", str(target))
-    if fmt is None:
+    if run_project_tool(ctx.root, "ruff", "format", "--quiet", str(target)) is None:
         return (
             f"ruff is not installed or not found in environment (run `uv sync`) "
             f"while checking {rel}."
         )
-    r = _run_tool(
-        ctx.root,
-        "ruff",
-        "check",
-        "--fix",
-        "--unfixable",
-        "F401",
-        "--quiet",
-        str(target),
+    r = run_project_tool(
+        ctx.root, "ruff", "check", "--fix", "--unfixable", "F401", "--quiet", str(target)
     )
     if r is not None and r.returncode != 0:
         out = (r.stdout or r.stderr).strip()
@@ -78,8 +45,7 @@ def check_edited_file(ctx: HookContext) -> str:
 
 def main() -> None:
     ctx = parse_payload()
-    problems = check_edited_file(ctx)
-    emit_post_tool_feedback(ctx, problems)
+    emit_post_tool_feedback(ctx, check_edited_file(ctx))
 
 
 if __name__ == "__main__":

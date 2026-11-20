@@ -28,15 +28,5 @@ Structure decks around `Title → Agenda → 01 Context & Objective → 02 Data 
 3. **Review with the user:**
    Share a concise summary of the narrative arc and slide count in chat with a link to `docs/slides/<NN-name>.md`, and wait for confirmation before building `.pptx`.
 4. **Build the `.pptx` deck:**
-   - Read `assets/example_build_deck.py` for the import and call pattern, and write `scripts/build_<NN-name>_deck.py` using `assets/deck_components.py`:
-     - `create_deck(widescreen=True)`
-     - `create_base_slide(prs, page_num, section_kicker, title, subtitle, notes)`
-     - `add_roadmap_slide(prs, page_num, sections, active_idx, notes)`
-     - `add_stat_and_bullets(slide, stat_value, stat_label, stat_subtext, bullets)`
-     - `add_two_column_cards(slide, left_card, right_card, bottom_note)`
-     - `add_horizontal_pipeline(slide, steps)`
-     - `add_comparison_split(slide, left_col, right_col)`
-     - `add_double_stat(slide, stat1, stat2)`
-     - `add_chart_element(slide, image_path, takeaways)`
-     - `add_clean_table(slide, headers, rows, col_widths)`
+   - Read `assets/example_build_deck.py` for the `deck_components.py` import and layout call patterns, then write `scripts/build_<NN-name>_deck.py`.
    - Run `uv run python scripts/build_<NN-name>_deck.py` to generate `docs/slides/<NN-name>.pptx`.

@@ -1,6 +1,7 @@
 # Environments & caches
 .venv/
 venv/
+uv.lock
 node_modules/
 __pycache__/
 *.pyc

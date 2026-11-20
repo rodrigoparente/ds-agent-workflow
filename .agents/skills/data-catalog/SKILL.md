@@ -5,6 +5,8 @@ description: Reference guide for data lake tables, PySpark loading snippets, sta
 
 # Data Lake Catalog
 
+> **Template Note:** The tables below (`lake.core.users`, `lake.media.user_images`) are **example placeholders**. Replace them with your project's actual tables using Section 3.
+
 Index of available data lake tables, PySpark loading recipes, schemas, sample data, and entity relationships. Detailed schemas (`printSchema()`), sample rows (`show(truncate=False)`), and loading functions live in `assets/tables/<table_name>.md`.
 
 ---

@@ -1,49 +1,24 @@
 #!/usr/bin/env python3
-"""Shared lifecycle hook payload adapter for Antigravity, Claude Code, and Cursor.
-
-Normalizes stdin JSON payloads across tools and writes the appropriate exit code / stdout JSON.
-"""
+"""Shared lifecycle hook helpers for Antigravity, Claude Code, and Cursor."""
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-READ_TOOLS = {
-    "Read",
-    "read_file",
-    "view_file",
-    "view_file_outline",
-    "view_code_item",
-}
-WRITE_TOOLS = {
-    "Edit",
-    "Write",
-    "MultiEdit",
-    "NotebookEdit",
-    "edit_file",
-    "write_file",
-    "replace_file_content",
-    "multi_replace_file_content",
-}
-SHELL_TOOLS = {"Bash", "run_command"}
-
 
 @dataclass
 class HookContext:
     agent: str  # "antigravity" | "claude" | "cursor"
-    event: str
     root: Path
-    kind: str  # "shell" | "read" | "write" | "other"
-    tool_name: str
-    command: str
-    file_path: str
-    stop_active: bool
-    raw: dict[str, Any]
+    file_path: str = ""
+    stop_active: bool = False
 
     def rel_path(self) -> str:
         """Return project-relative forward-slash path, or empty string."""
@@ -62,8 +37,7 @@ class HookContext:
 
 
 def _detect_root(payload: dict[str, Any]) -> Path:
-    env_root = os.environ.get("CLAUDE_PROJECT_DIR")
-    if env_root:
+    if env_root := os.environ.get("CLAUDE_PROJECT_DIR"):
         return Path(env_root).resolve()
     ws = payload.get("workspacePaths")
     if isinstance(ws, list) and ws:
@@ -75,12 +49,11 @@ def _detect_root(payload: dict[str, Any]) -> Path:
             if (parent / "pyproject.toml").exists():
                 return parent
         return p
-    here = Path(__file__).resolve()
-    return here.parents[2]
+    return Path(__file__).resolve().parents[2]
 
 
 def parse_payload(stream: Any = None) -> HookContext:
-    """Parse JSON from stdin (or provided stream) into a normalized HookContext."""
+    """Parse stdin JSON into a normalized HookContext."""
     raw_text = (stream or sys.stdin).read()
     try:
         data = json.loads(raw_text) if raw_text.strip() else {}
@@ -88,14 +61,10 @@ def parse_payload(stream: Any = None) -> HookContext:
         data = {}
 
     root = _detect_root(data)
-    event = data.get("hookEventName") or data.get("hook_event_name") or ""
 
     if "toolCall" in data or "workspacePaths" in data or "continuationActive" in data:
         agent = "antigravity"
-        tc = data.get("toolCall") or {}
-        tool_name = tc.get("name", "")
-        args = tc.get("args") or {}
-        cmd = args.get("CommandLine") or args.get("command") or ""
+        args = (data.get("toolCall") or {}).get("args") or {}
         path = (
             args.get("Path")
             or args.get("TargetFile")
@@ -105,74 +74,35 @@ def parse_payload(stream: Any = None) -> HookContext:
         )
         stop_active = bool(data.get("continuationActive", False))
     elif "loop_count" in data or (
-        "command" in data and "tool_name" not in data and "tool_input" not in data
+        "tool_input" not in data and ("file_path" in data or "file" in data)
     ):
         agent = "cursor"
-        tool_name = data.get("tool_name", "")
-        cmd = data.get("command", "")
         path = data.get("file_path") or data.get("file") or data.get("path") or ""
         stop_active = int(data.get("loop_count", 0) or 0) > 0
     else:
         agent = "claude"
-        tool_name = data.get("tool_name", "")
         ti = data.get("tool_input") or {}
-        cmd = ti.get("command", "")
         path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
         stop_active = bool(data.get("stop_hook_active", False))
 
-    if tool_name in SHELL_TOOLS or (cmd and not tool_name):
-        kind = "shell"
-    elif tool_name in READ_TOOLS:
-        kind = "read"
-    elif tool_name in WRITE_TOOLS or (path and not tool_name):
-        kind = "write"
+    return HookContext(agent=agent, root=root, file_path=path, stop_active=stop_active)
+
+
+def run_project_tool(
+    root: Path, *args: str, timeout: int | None = None
+) -> subprocess.CompletedProcess[str] | None:
+    """Run a CLI tool via `uv run`, `.venv/bin/`, or PATH; return None if unavailable."""
+    venv_tool = root / ".venv" / "bin" / args[0]
+    if shutil.which("uv"):
+        sync_flag = ("--no-sync",) if (root / ".venv").exists() else ()
+        cmd = ("uv", "run", *sync_flag, "--quiet", *args)
+    elif venv_tool.exists():
+        cmd = (str(venv_tool), *args[1:])
+    elif shutil.which(args[0]):
+        cmd = args
     else:
-        kind = "other"
-
-    return HookContext(
-        agent=agent,
-        event=event,
-        root=root,
-        kind=kind,
-        tool_name=tool_name,
-        command=cmd,
-        file_path=path,
-        stop_active=stop_active,
-        raw=data,
-    )
-
-
-def emit_pre_tool_decision(ctx: HookContext, decision: str, reason: str = "") -> None:
-    """Emit allow / deny / ask for PreToolUse and exit."""
-    if ctx.agent == "antigravity":
-        out: dict[str, Any] = {"decision": decision}
-        if reason:
-            out["reason"] = reason
-        print(json.dumps(out))
-        sys.exit(0)
-    if ctx.agent == "cursor":
-        out = {"permission": decision}
-        if reason:
-            out["agentMessage"] = reason
-        print(json.dumps(out))
-        sys.exit(2 if decision == "deny" else 0)
-    # Claude Code
-    if decision == "deny":
-        print(reason, file=sys.stderr)
-        sys.exit(2)
-    if decision == "ask":
-        print(
-            json.dumps(
-                {
-                    "hookSpecificOutput": {
-                        "hookEventName": "PreToolUse",
-                        "permissionDecision": "ask",
-                        "permissionDecisionReason": reason,
-                    }
-                }
-            )
-        )
-    sys.exit(0)
+        return None
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=timeout)
 
 
 def emit_post_tool_feedback(ctx: HookContext, problem_text: str = "") -> None:
@@ -191,16 +121,13 @@ def emit_post_tool_feedback(ctx: HookContext, problem_text: str = "") -> None:
 def emit_stop_decision(ctx: HookContext, should_continue: bool, reason: str = "") -> None:
     """Emit Stop hook result (block stop & force retry when tests fail) and exit."""
     if ctx.agent == "antigravity":
-        if should_continue:
-            print(json.dumps({"decision": "continue", "reason": reason}))
-        else:
-            print(json.dumps({"decision": "allow"}))
+        payload = (
+            {"decision": "continue", "reason": reason} if should_continue else {"decision": "allow"}
+        )
+        print(json.dumps(payload))
         sys.exit(0)
     if ctx.agent == "cursor":
-        if should_continue:
-            print(json.dumps({"followup_message": reason}))
-        else:
-            print("{}")
+        print(json.dumps({"followup_message": reason} if should_continue else {}))
         sys.exit(0)
     if should_continue:
         print(reason, file=sys.stderr)
@@ -210,20 +137,13 @@ def emit_stop_decision(ctx: HookContext, should_continue: bool, reason: str = ""
 
 def emit_session_start(ctx: HookContext, message: str) -> None:
     """Emit SessionStart context injection and exit."""
-    if not message.strip():
+    msg = message.strip()
+    if not msg:
         if ctx.agent == "antigravity":
             print("{}")
         sys.exit(0)
     if ctx.agent == "antigravity":
-        print(
-            json.dumps(
-                {
-                    "injectSteps": [
-                        {"systemMessage": {"systemMessage": message.strip()}},
-                    ]
-                }
-            )
-        )
+        print(json.dumps({"injectSteps": [{"systemMessage": {"systemMessage": msg}}]}))
         sys.exit(0)
-    print(message.strip())
+    print(msg)
     sys.exit(0)

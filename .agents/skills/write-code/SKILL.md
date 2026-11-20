@@ -5,7 +5,7 @@ description: Implement, update, or refine code from an approved spec—whether a
 
 # Write Code
 
-Implements an approved spec (`specs/<NN-name>.md`) into `notebooks/py/<NN-name>.py`, `scripts/`, `apps/`, and/or `tests/`, following the spec-first rule, minimal-code ladder, and execution ban in `AGENTS.md`.
+Implements an approved spec (`specs/<NN-name>.md`) into `notebooks/py/<NN-name>.py`, `scripts/`, `apps/`, and/or `tests/`, following the spec-first rule, minimal-code ladder, and agent boundaries in `AGENTS.md`.
 
 ## Process
 
@@ -19,9 +19,9 @@ Implements an approved spec (`specs/<NN-name>.md`) into `notebooks/py/<NN-name>.
      Start from `assets/skeleton.py` and keep the standard cell order:
      1. **Title Cell (Markdown):** Initiative name, one-sentence overview from the spec, link to `specs/<NN-name>.md` (and baseline to beat if modeling).
      2. **Install Cell:** `# %pip install -q <packages>` listing every third-party package imported or needed implicitly (`tabulate`, `pyarrow`, `openpyxl`).
-     3. **Imports & Config Cells:** Standard/third-party/`scripts/` imports, then `NAME`, `ROOT`, `DATA`, `MODELS`, `FIGURES`, `REFRESH_DATA = False` (set `True` when `## Data & Inputs` changes), and `SEED`.
-     4. **Get Data → Execution Steps → Summary & Artifacts:** Cache to `DATA / f"{NAME}.parquet"`, precede each step cell with a 1–2 sentence markdown cell, save figures to `FIGURES / f"{NAME}_<what>.png"`, and display the primary summary table.
-     - **Notebook guardrails:** Flat inline code only (no classes, no `try/except`), at most **220** total code lines, **35** code lines per cell, and **15** lines per local `def` (move larger/reusable logic to `scripts/`).
+     3. **Imports Cell:** Standard/third-party/`scripts/` imports.
+     4. **Config → Get Data → Execution Steps → Summary & Artifacts:** Precede `Config` (`NAME`, `ROOT`, `DATA`, `MODELS`, `FIGURES`, `REFRESH_DATA = False`, `SEED`) and every step cell with a 1–2 sentence markdown cell. Cache data to `DATA / f"{NAME}.parquet"`, save figures to `FIGURES / f"{NAME}_<what>.png"`, and display the primary summary table.
+     - **Notebook guardrails:** Flat inline code only (no classes, no `try/except`), at most **220** total code lines and **35** code lines per cell (excluding markdown, comments, and triple-quoted SQL strings), and **15** lines per local `def` (move larger/reusable logic to `scripts/`).
    - **Option B — Standalone Scripts & Pipelines (`scripts/`):**
      Keep functions small, pure/importable, and free of import-time side effects. Resolve paths from repo root (`pyproject.toml`) and add tests in `tests/test_<name>.py`.
    - **Option C — Interactive Apps & APIs (`apps/`, e.g., Streamlit, FastAPI):**
@@ -29,10 +29,9 @@ Implements an approved spec (`specs/<NN-name>.md`) into `notebooks/py/<NN-name>.
    - **Option D — Tests (`tests/test_<name>.py`):**
      Use `pytest` fixtures with small synthetic data; never depend on large raw files in `data/`.
 
-3. **Verify static checks & tests (hooks run automatically):**
-   - `PostToolUse` (`.agents/hooks/lint.py`) automatically runs `check_notebook.py` (formatting, AST/budget/install checks, and `.ipynb` sync) on `notebooks/py/*.py` edits, and `ruff format` + `ruff check` on all other `.py` edits.
-   - `Stop` (`.agents/hooks/stop_tests.py`) automatically runs `pytest -x -q` when `.py` files changed and `tests/test_*.py` exists.
-   - Fix any issues reported by hooks (or run `uv run pytest` manually while iterating on tests).
+3. **Verify static checks & tests:**
+   - Fix any formatting, lint, notebook-budget, or `.ipynb` sync issues reported by automated hooks (or run `uv run python .agents/tools/check_notebook.py notebooks/py/<NN-name>.py` directly).
+   - Run `uv run pytest` (or quick synthetic-data probes via `python -c`) to verify helper/app logic before handoff.
 
 4. **Handoff for user execution:**
-   Do **not** run notebooks, experiment scripts, or app servers yourself. Tell the user the code is statically checked (and synced to `notebooks/<NN-name>.ipynb` or tested via `pytest`), ask them to run it (`uv run jupyter lab`, `uv run python scripts/<name>.py`, or `uv run <app-command>`), and wait for results.
+   Do **not** run what you create in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Tell the user the code is statically checked (and synced to `notebooks/<NN-name>.ipynb` or tested via `pytest`), ask them to run it (`uv run jupyter lab`, `uv run python scripts/<name>.py`, or `uv run <app-command>`), and wait for results.
