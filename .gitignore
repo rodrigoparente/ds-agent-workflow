@@ -1,7 +1,8 @@
 # Environments & caches
 .venv/
 venv/
-uv.lock
+*.egg-info/
+build/
 node_modules/
 __pycache__/
 *.pyc

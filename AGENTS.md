@@ -1,84 +1,53 @@
 # Data Science Workflow & Agent Guidelines
 
-## How We Work
+Human-in-the-loop lifecycle: **Research (optional) → Spec → Code → Run (User) → Report → Presentation**. Skills live in `.agents/skills/` and trigger from natural prompts.
 
-We follow a collaborative, human-in-the-loop workflow: **Research (optional) → Spec → Code → Run → Report → Slides**.
-- **Flexible & Intuitive:** You do not need to use rigid magic words. Natural prompts ("I want to know more about X", "Let's explore X", "Can we build X?", "Why did X happen?") route directly to the right skill.
-- **Interactive First, Never Robotic:** Discuss ideas, ask clarifying questions, present trade-offs, and confirm direction before making unilateral assumptions.
-- **Spec First (Even on Edits):** Every piece of work begins with an agreed spec in `specs/<NN-name>.md`. Whenever modifying, fixing, or adding to an existing experiment, **update the spec FIRST** (via `experiment-spec`) before editing code.
-- **User in the Driver's Seat:** The agent is a **code copilot, never an experiment runner**. You write/edit code, run static checks and unit tests, and prepare artifacts—the user **always** runs experiments, notebooks, pipelines, and app servers in Jupyter Lab or their terminal.
-- **No Forced Goals:** Exploratory data analysis (EDA), data pipelines, prototypes, and open-ended investigations without fixed metrics are fully supported.
-- **Start Simple:** Establish the simplest working solution first, adding complexity only when data or user requirements justify it.
-
-| Step | Skill | Deliverable | Execution Owner |
-|---|---|---|---|
-| Research (optional) | `researcher` | `docs/research/<topic>.md` | Agent searches & summarizes |
-| Spec | `experiment-spec` | `specs/<NN-name>.md` (`draft → approved → executed`) | Collaborative agreement |
-| Data Reference | `data-catalog` | Reference for lake tables, schemas & recipes | Reference guide |
-| Code | `write-code` | `notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`, `scripts/`, `apps/`, `tests/` | Agent formats, lints, tests & auto-syncs |
-| Execution | User runs code | Execution outputs in `notebooks/`, `models/`, `data/`, or terminal | **User runs always** |
-| Report | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent reads outputs |
-| Presentation | `make-presentation` | `docs/slides/<NN-name>.md` outline, then `.pptx` | Collaborative alignment & deck build |
+- **Spec first (even on edits):** Start every initiative and follow-up change by updating `specs/<NN-name>.md` (`draft → approved → executed`) via `experiment-spec` before editing code. EDA, pipelines, and prototypes without formal metrics are first-class.
+- **Start simple & stay transparent:** Build the simplest working solution first; document any unconfirmed metric, filter, or default in the spec.
+- **Interactive, one step at a time:** Use `ask_question` / `AskUserQuestion` (recommended option first) for brainstorming, ambiguous requirements, or trade-offs—not for routine "what next?" prompts. Complete the requested step, summarize concisely with file links, and wait for the user.
 
 ## Repository Layout
 
-```
-specs/                        <NN-name>.md (authoritative specs, OpenSpec-style)
+```text
+specs/<NN-name>.md            authoritative specs (experiment-spec)
 notebooks/
-  ├── <NN-name>.ipynb         executed notebook (run by user; outputs stripped in Git via nbstripout)
-  └── py/<NN-name>.py         notebook source of truth (edited by agent, auto-synced via Jupytext)
-models/                       serialized models and artifacts (git-ignored)
-apps/                         interactive apps, dashboards, and API services
-scripts/                      standalone scripts, pipelines, shared modules, deck builders
-tests/                        test_<name>.py (unit and integration tests)
+  ├── <NN-name>.ipynb         user-executed notebook (outputs stripped in Git via nbstripout)
+  └── py/<NN-name>.py         notebook source edited by agent (auto-synced via Jupytext)
+models/                       serialized models & artifacts (git-ignored)
+apps/                         interactive apps, dashboards, and APIs
+scripts/                      standalone scripts, pipelines, and shared modules
+tests/test_<name>.py          unit and integration tests
 docs/
-  ├── reports/<NN-name>.md    results and analysis summary (+ .docx on request)
-  ├── slides/<NN-name>.md     executive slide outline and deck (.pptx)
-  ├── research/<topic>.md     optional research briefs
+  ├── reports/<NN-name>.md    verified findings report (+ .docx on request; experiment-report)
+  ├── presentations/<name>/   executive deck: slides.json, <name>.pptx, optional .pdf (presentation)
+  ├── research/<name>.md      optional literature & concept briefs (research)
   └── figures/<NN-name>_*.png saved charts and visualizations
 data/                         cached local datasets (<NN-name>.parquet, git-ignored)
 ```
 
-- **Naming:** Initiatives are named in kebab-case with a two-digit sequential number (`01-sales-eda`, `02-baseline`). Every associated file uses this exact prefix.
-- **Notebooks:** `notebooks/py/<NN-name>.py` is the source of truth edited by the agent; `check_notebook.py` automatically generates and syncs `notebooks/<NN-name>.ipynb`. In Git, `nbstripout` strips heavy cell outputs on commit while preserving local outputs on disk so `.agents/tools/nb_summary.py` can inspect run results.
+- **Naming:** Experiment initiatives use a two-digit kebab-case prefix (`01-sales-eda`, `02-baseline`) across `specs/`, `notebooks/`, `docs/reports/`, and `docs/figures/`. Standalone `docs/research/<name>.md` and `docs/presentations/<name>/` use user-chosen names.
+- **Notebooks:** Edit only `notebooks/py/<NN-name>.py` (`check_notebook.py` syncs `.ipynb`). Cell 1 lists third-party packages via `# # %pip install -q ...` (stays commented in `.ipynb` locally; recipients uncomment to run standalone).
 
-## Collaboration Principles
+## Code Standards
 
-- **Dialog Boxes for Strategic Decisions & Brainstorming (Use Judiciously):** Use your interactive multiple-choice question tool (`ask_question` / `AskUserQuestion`) specifically when **brainstorming ideas, clarifying open-ended requirements, choosing between technical trade-offs, or aligning on narrative framing/direction**.
-  - Present structured, actionable choices with a recommended option first (`(Recommended) ...`).
-  - Do not add manual "Other" options in the array—the UI automatically adds an "Other" option and freeform chat input.
-  - **Do NOT spam dialog boxes for routine updates:** Never show a dialog box just to ask "What should we do next?" after completing a routine request or file edit. Simply summarize the outcome in plain chat text and let the user direct the next action.
-- **One Step at a Time:** Complete the specific step requested, summarize status in chat, and wait for the user. Do not execute subsequent workflow steps without user confirmation.
-- **Concise Chat Outputs:** Keep chat responses focused and readable. Avoid dumping multi-page documents or massive logs into chat—provide high-level summaries and link directly to files (`specs/<NN-name>.md`, `docs/reports/<NN-name>.md`, `docs/slides/<NN-name>.md`).
-- **Transparent Assumptions:** Document any default metric, data filter, or design choice not explicitly specified by the user in the spec for confirmation.
-
-## Code Standards (Notebooks, Scripts & Apps)
-
-Follow a minimal-code ladder:
-1. Only implement what the spec explicitly requires.
-2. Reuse existing project code from `scripts/` or earlier work where applicable.
-3. Use Python standard library, pandas, numpy, and scikit-learn built-ins over custom functions.
+1. Only implement what the approved spec requires.
+2. Reuse existing code from `scripts/` or earlier initiatives where applicable.
+3. Prefer Python stdlib, pandas, numpy, and scikit-learn built-ins over custom functions.
 4. Keep code flat and readable: avoid single-use functions, classes, config objects, and defensive wrappers.
-5. Protect data integrity: retain essential validation checks (shapes, column types, split leak prevention, random seeds).
+5. Keep essential data-integrity checks (shapes, types, split leak prevention, random seeds).
 
 ## Agent Boundaries
 
-- **You generate, the user runs.** Never run what we create in `notebooks/`, `scripts/` (except `scripts/build_<NN-name>_deck.py`), or `apps/` (app servers/services) unless explicitly asked. Hand off with the exact command to run.
-- **Allowed agent commands:** Quick probes (`python -c`, short snippets on synthetic data), `pytest`, `ruff`, `.agents/tools/` helpers (`check_notebook.py`, `nb_summary.py`, `export_docx.py`), `scripts/build_<NN-name>_deck.py`, and ordinary read-only shell commands. Keep probes to a few seconds and off real data.
-- **Don't read** `data/` (use the `data-catalog` skill), `.env*`, or `~/.ssh`.
-- **Never open or edit `notebooks/*.ipynb`.** Edit `notebooks/py/<NN-name>.py`; read run outputs with `nb_summary.py`.
-- **Confirm before destructive or irreversible actions** (`rm -rf`, `git push --force`, `git reset --hard`, `uv add/remove`) unless the user explicitly asked for exactly that.
+- **You generate, the user runs.** Never run generated code in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Hand off with the exact command to run inside `.venv` (`jupyter lab`, `python scripts/<name>.py`, or `<app-command>`).
+- **Allowed commands:** Quick synthetic-data probes (`python3 -c`, a few seconds), `pytest`, `ruff`, `.agents/tools/*`, `.agents/skills/research/scripts/papers.py`, `.agents/skills/presentation/scripts/deck.py` (plus `soffice`/`pdftoppm` for slide previews), and read-only shell commands.
+- **Never read** `data/` (consult `data-catalog` instead), `.env*`, or `~/.ssh`.
+- **Never open or edit `notebooks/*.ipynb`.** Edit `notebooks/py/<NN-name>.py` and inspect run outputs via `nb_summary.py`.
+- **Confirm first** before destructive or irreversible actions (`rm -rf`, `git push --force`, `git reset --hard`, `pip install/uninstall`) unless explicitly asked.
 
-## Core Commands
+## Helper Commands
 
-### User Commands (Run by the User)
-- **Environment setup:** `uv sync`
-- **Launch Jupyter Lab:** `uv run jupyter lab`
-- **Run standalone script:** `uv run python scripts/<name>.py`
-- **Run application / service:** `uv run <app-command>` (e.g. `streamlit`, `uvicorn`, or `python apps/<name>.py`)
-
-### Helper Tools (Run by Agent or User)
-- **Static check & auto-sync notebook (does NOT execute code):** `uv run python .agents/tools/check_notebook.py notebooks/py/<NN-name>.py`
-- **Read executed notebook outputs (after user runs it):** `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
-- **Export report to Word (`.docx`):** `uv sync --group docs && uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
-- **Compile PowerPoint slide deck:** `uv run python scripts/build_<NN-name>_deck.py`
+- **Check & sync notebook (no execution):** `python3 .agents/tools/check_notebook.py notebooks/py/<NN-name>.py`
+- **Read executed notebook outputs:** `python3 .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
+- **Export report to `.docx`:** `.venv/bin/python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
+- **Build slide deck:** `.venv/bin/python .agents/skills/presentation/scripts/deck.py docs/presentations/<name>/slides.json`
+- **Search academic papers:** `python3 .agents/skills/research/scripts/papers.py search "query"`

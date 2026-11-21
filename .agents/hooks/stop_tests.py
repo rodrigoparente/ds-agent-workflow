@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stop hook: runs `pytest -x -q` when Python code or hook/tool files changed."""
+"""Stop hook: runs `pytest -x -q` when Python code or hook/tool/skill files changed."""
 
 from __future__ import annotations
 
@@ -28,35 +28,34 @@ def _changed_python_paths(root: Path) -> list[str]:
     return paths
 
 
+def _select_test_targets(root: Path, changed: list[str]) -> list[str]:
+    has_project_tests = (root / "tests").exists() and any((root / "tests").glob("test_*.py"))
+    has_hook_tests = (root / ".agents" / "hooks" / "test_hooks.py").exists()
+    targets: list[str] = []
+    if has_project_tests and any(p.startswith(("scripts/", "apps/", "tests/")) for p in changed):
+        targets.append("tests")
+    if has_hook_tests and any(
+        p.startswith((".agents/hooks/", ".agents/tools/", ".agents/skills/")) for p in changed
+    ):
+        targets.append(".agents/hooks/test_hooks.py")
+    return targets
+
+
 def check_tests_on_stop(ctx: HookContext) -> tuple[bool, str]:
     """Return (should_continue, reason). True means tests failed and agent must fix them."""
     if ctx.stop_active:
         return (False, "")
+    if (
+        ctx.agent == "antigravity"
+        and ctx.termination_reason
+        and ctx.termination_reason != "NO_TOOL_CALL"
+    ):
+        return (False, "")
 
     changed = _changed_python_paths(ctx.root)
-    if not changed:
+    targets = _select_test_targets(ctx.root, changed) if changed else []
+    if not targets:
         return (False, "")
-
-    has_project_tests = (ctx.root / "tests").exists() and any(
-        (ctx.root / "tests").glob("test_*.py")
-    )
-    has_hook_tests = (ctx.root / ".agents" / "hooks" / "test_hooks.py").exists()
-
-    run_project = has_project_tests and any(
-        p.startswith(("scripts/", "apps/", "tests/")) for p in changed
-    )
-    run_hooks = has_hook_tests and any(
-        p.startswith((".agents/hooks/", ".agents/tools/")) for p in changed
-    )
-
-    if not (run_project or run_hooks):
-        return (False, "")
-
-    targets: list[str] = []
-    if run_project:
-        targets.append("tests")
-    if run_hooks:
-        targets.append(".agents/hooks/test_hooks.py")
 
     try:
         r = run_project_tool(ctx.root, "pytest", "-x", "-q", *targets, timeout=120)

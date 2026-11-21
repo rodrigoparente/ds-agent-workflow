@@ -19,6 +19,7 @@ class HookContext:
     root: Path
     file_path: str = ""
     stop_active: bool = False
+    termination_reason: str = ""
 
     def rel_path(self) -> str:
         """Return project-relative forward-slash path, or empty string."""
@@ -52,6 +53,22 @@ def _detect_root(payload: dict[str, Any]) -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _venv_candidates(venv_dir: Path, tool: str) -> tuple[Path, Path]:
+    return (venv_dir / "bin" / tool, venv_dir / "Scripts" / f"{tool}.exe")
+
+
+def find_project_tool(root: Path, tool: str) -> str | None:
+    """Locate a CLI executable in `.venv/`, `venv/`, `VIRTUAL_ENV`, or `PATH`."""
+    venv_dirs = [root / ".venv", root / "venv"]
+    if active := os.environ.get("VIRTUAL_ENV"):
+        venv_dirs.append(Path(active))
+    for venv_dir in venv_dirs:
+        for candidate in _venv_candidates(venv_dir, tool):
+            if candidate.is_file():
+                return str(candidate)
+    return shutil.which(tool)
+
+
 def parse_payload(stream: Any = None) -> HookContext:
     """Parse stdin JSON into a normalized HookContext."""
     raw_text = (stream or sys.stdin).read()
@@ -61,6 +78,7 @@ def parse_payload(stream: Any = None) -> HookContext:
         data = {}
 
     root = _detect_root(data)
+    termination_reason = ""
 
     if "toolCall" in data or "workspacePaths" in data or "continuationActive" in data:
         agent = "antigravity"
@@ -73,6 +91,7 @@ def parse_payload(stream: Any = None) -> HookContext:
             or ""
         )
         stop_active = bool(data.get("continuationActive", False))
+        termination_reason = str(data.get("terminationReason") or "")
     elif "loop_count" in data or (
         "tool_input" not in data and ("file_path" in data or "file" in data)
     ):
@@ -85,23 +104,23 @@ def parse_payload(stream: Any = None) -> HookContext:
         path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
         stop_active = bool(data.get("stop_hook_active", False))
 
-    return HookContext(agent=agent, root=root, file_path=path, stop_active=stop_active)
+    return HookContext(
+        agent=agent,
+        root=root,
+        file_path=path,
+        stop_active=stop_active,
+        termination_reason=termination_reason,
+    )
 
 
 def run_project_tool(
     root: Path, *args: str, timeout: int | None = None
 ) -> subprocess.CompletedProcess[str] | None:
-    """Run a CLI tool via `uv run`, `.venv/bin/`, or PATH; return None if unavailable."""
-    venv_tool = root / ".venv" / "bin" / args[0]
-    if shutil.which("uv"):
-        sync_flag = ("--no-sync",) if (root / ".venv").exists() else ()
-        cmd = ("uv", "run", *sync_flag, "--quiet", *args)
-    elif venv_tool.exists():
-        cmd = (str(venv_tool), *args[1:])
-    elif shutil.which(args[0]):
-        cmd = args
-    else:
+    """Run a CLI tool via `.venv/`, `venv/`, `VIRTUAL_ENV`, or PATH; None if missing."""
+    exe = find_project_tool(root, args[0])
+    if exe is None:
         return None
+    cmd = (exe, *args[1:])
     return subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=timeout)
 
 

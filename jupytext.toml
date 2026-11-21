@@ -1,3 +1,4 @@
 # Pairs notebooks/py/<name>.py (flat Python source edited by the agent) with
 # notebooks/<name>.ipynb (executed by you in JupyterLab; outputs stripped in Git via nbstripout).
+# Default comment_magics = true keeps `# # %pip install ...` in .py commented in .ipynb (`# %pip ...`).
 formats = "notebooks///ipynb,notebooks/py///py:percent"

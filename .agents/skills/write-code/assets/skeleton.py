@@ -1,11 +1,12 @@
 # %% [markdown]
 # # <NN-name>
-# **Overview:** one sentence describing what we are exploring, building, or testing (from the spec).
+# **Overview:** one sentence describing what we are exploring, building, or testing (from spec).
 # **Spec:** specs/<NN-name>.md
 # **Baseline (optional, for modeling experiments):** metric and number to beat.
 
 # %%
-# %pip install -q pandas numpy pyarrow matplotlib
+# Uncomment if running this notebook standalone outside the project venv:
+# # %pip install -q pandas numpy pyarrow matplotlib
 
 # %%
 from pathlib import Path

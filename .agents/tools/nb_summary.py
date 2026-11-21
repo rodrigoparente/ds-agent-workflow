@@ -65,8 +65,24 @@ def _execution_footer(n_outputs: int, executed: int, total: int, counts: list[in
     return summary
 
 
+def _format_code_cell(
+    idx: int, cell: dict, show_code: bool, limit: int
+) -> tuple[list[str], int, int | None, bool]:
+    src = text(cell.get("source", ""))
+    ec = cell.get("execution_count")
+    cell_outputs = cell.get("outputs", [])
+    was_run = ec is not None or bool(cell_outputs)
+    tag = f" (exec #{ec})" if ec is not None else (" [UNRUN]" if not cell_outputs else "")
+    first = src.splitlines()[0] if src.strip() else ""
+    header = f"\n[code {idx}{tag}]\n{src}" if show_code else f"\n[code {idx}{tag}] {first} ..."
+    lines = [header]
+    for out in cell_outputs:
+        lines.extend(_format_output(out, limit))
+    return lines, len(cell_outputs), ec if isinstance(ec, int) else None, was_run
+
+
 def summarize_notebook(path: str, show_code: bool = False, limit: int = 1500) -> str:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         nb = json.load(f)
 
     out_lines: list[str] = []
@@ -76,27 +92,17 @@ def summarize_notebook(path: str, show_code: bool = False, limit: int = 1500) ->
     exec_counts: list[int] = []
 
     for i, cell in enumerate(nb.get("cells", [])):
-        src = text(cell.get("source", ""))
         if cell.get("cell_type") == "markdown":
-            out_lines.append(f"\n[md {i}]\n{src}")
+            out_lines.append(f"\n[md {i}]\n{text(cell.get('source', ''))}")
             continue
-
         total_code_cells += 1
-        ec = cell.get("execution_count")
-        cell_outputs = cell.get("outputs", [])
-        if ec is not None or cell_outputs:
+        lines, cell_n_out, ec, was_run = _format_code_cell(i, cell, show_code, limit)
+        out_lines.extend(lines)
+        n_outputs += cell_n_out
+        if was_run:
             executed_code_cells += 1
-        if isinstance(ec, int):
+        if ec is not None:
             exec_counts.append(ec)
-
-        tag = f" (exec #{ec})" if ec is not None else (" [UNRUN]" if not cell_outputs else "")
-        first = src.splitlines()[0] if src.strip() else ""
-        header = f"\n[code {i}{tag}]\n{src}" if show_code else f"\n[code {i}{tag}] {first} ..."
-        out_lines.append(header)
-
-        for out in cell_outputs:
-            n_outputs += 1
-            out_lines.extend(_format_output(out, limit))
 
     out_lines.append(
         _execution_footer(n_outputs, executed_code_cells, total_code_cells, exec_counts)

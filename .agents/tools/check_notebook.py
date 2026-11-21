@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Format, check and sync an experiment notebook (jupytext percent .py file).
 
-Usage: python .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
+Usage: python3 .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
 Runs ruff format, enforces the size/documentation budget from write-code/SKILL.md,
 checks that every imported package is in the install cell, then syncs the paired .ipynb
 in notebooks/. Prints problems and exits 1 if anything is wrong. Any tool or person can
@@ -33,7 +33,7 @@ PIP_NAME = {
     "skimage": "scikit-image",
     "dotenv": "python-dotenv",
 }
-PROVIDED = {"pyspark", "IPython", "scripts", "apps"}  # workspace & notebook builtins
+PROVIDED = {"IPython", "scripts", "apps"}  # workspace & notebook builtins
 # calls that need a package which is never imported explicitly
 IMPLICIT = {".to_markdown(": "tabulate", "_parquet(": "pyarrow", "read_excel(": "openpyxl"}
 
@@ -46,7 +46,7 @@ def collapse_strings(text):
 
 
 def run(*cmd):
-    """Run a tool through uv, .venv/bin, or PATH. Returns None if not installed."""
+    """Run a tool through .venv/bin, venv/bin, VIRTUAL_ENV, or PATH. Returns None if missing."""
     return run_project_tool(ROOT, *cmd)
 
 
@@ -65,10 +65,10 @@ def norm(name):
 
 
 def installed_packages(text):
-    """Package names listed on `# %pip install ...` lines."""
+    """Package names listed on `# # %pip install ...` or `# %pip install ...` lines."""
     pkgs = set()
     for line in text.splitlines():
-        m = re.match(r"#\s*[%!]pip install(.*)", line)
+        m = re.match(r"\s*#(?:\s*#)?\s*[%!]pip install(.*)", line)
         for tok in m.group(1).split() if m else []:
             tok = tok.strip("\"'")
             name = re.match(r"[A-Za-z0-9_.-]+", tok)
@@ -77,29 +77,38 @@ def installed_packages(text):
     return pkgs
 
 
-def missing_installs(tree, text, path):
-    """Third-party packages the notebook needs that the install cell does not list."""
-    if tree is None:
-        return []
-    have = installed_packages(text)
+def _imported_roots(tree) -> set[str]:
     names = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names |= {a.name.split(".")[0] for a in node.names}
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             names.add(node.module.split(".")[0])
-    need = []
-    for name in sorted(names):
-        here = [
-            Path(path).parent / f"{name}.py",
-            ROOT / name,
-            ROOT / "scripts" / f"{name}.py",
-            ROOT / "scripts" / name,
-        ]
-        local = any(p.exists() for p in here)  # the project's own code, e.g. scripts/helpers.py
-        if name in sys.stdlib_module_names or name in PROVIDED or local:
-            continue
-        need.append(PIP_NAME.get(name, name))
+    return names
+
+
+def _is_local_module(name: str, path: str) -> bool:
+    here = [
+        Path(path).parent / f"{name}.py",
+        ROOT / name,
+        ROOT / "scripts" / f"{name}.py",
+        ROOT / "scripts" / name,
+    ]
+    return any(p.exists() for p in here)
+
+
+def missing_installs(tree, text, path):
+    """Third-party packages the notebook needs that the install cell does not list."""
+    if tree is None:
+        return []
+    have = installed_packages(text)
+    need = [
+        PIP_NAME.get(name, name)
+        for name in sorted(_imported_roots(tree))
+        if name not in sys.stdlib_module_names
+        and name not in PROVIDED
+        and not _is_local_module(name, path)
+    ]
     need += [pkg for call, pkg in IMPLICIT.items() if call in text and pkg not in need]
     return [pkg for pkg in need if norm(pkg) not in have]
 
@@ -139,6 +148,56 @@ def _count_code_lines(text):
     return total
 
 
+def _install_cell_problem(lines: list[str]) -> str | None:
+    has_commented = any(re.match(r"\s*#\s*#\s*%pip install\b", ln) for ln in lines)
+    if has_commented:
+        return None
+    if any(re.match(r"\s*#\s*%pip install\b", ln) for ln in lines):
+        return (
+            "Use double-hash `# # %pip install -q <packages>` in cell 1 so Jupytext keeps it "
+            "commented inside `.ipynb` (single `#` runs live on every execution)."
+        )
+    return (
+        "The first code cell must list packages via `# # %pip install -q <packages>` "
+        "(stays commented in `.ipynb` so the notebook can be shared standalone)."
+    )
+
+
+def _total_budget_problem(total_code_lines, cell_sizes, before_code_lines) -> str | None:
+    if total_code_lines <= MAX_LINES:
+        return None
+    top = ", ".join(f"Cell {idx} ({cnt})" for cnt, idx in sorted(cell_sizes, reverse=True)[:3])
+    fmt_note = ""
+    if before_code_lines is not None and total_code_lines > before_code_lines:
+        fmt_note = (
+            f" Note: `ruff format` expanded code from {before_code_lines} "
+            f"to {total_code_lines} lines."
+        )
+    return (
+        f"{total_code_lines} total code lines (max {MAX_LINES}). "
+        f"Cut scope creep or move reusable helpers to scripts/. Largest cells: {top}.{fmt_note}"
+    )
+
+
+def _check_code_cell(
+    idx: int, n_code: int, lines: list[str], prev_kind: str | None
+) -> tuple[list[str], int]:
+    issues: list[str] = []
+    if n_code == 1 and (pip_msg := _install_cell_problem(lines)):
+        issues.append(pip_msg)
+    code_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
+    if len(code_lines) > MAX_CELL:
+        issues.append(
+            f"Cell {idx + 1} has {len(code_lines)} code lines (max {MAX_CELL}). "
+            "Split into logical cells or simplify."
+        )
+    if n_code > SETUP_CELLS and prev_kind != "md":
+        issues.append(
+            f"Cell {idx + 1} has no markdown cell before it (what + why in 1-2 sentences)."
+        )
+    return issues, len(code_lines)
+
+
 def cell_problems(cells, before_code_lines=None):
     """Check per-cell and total code-line budgets and markdown headers."""
     out = []
@@ -149,32 +208,13 @@ def cell_problems(cells, before_code_lines=None):
         if kind != "code":
             continue
         n_code += 1
-        if n_code == 1 and not any("%pip install" in ln for ln in lines):
-            out.append("The first code cell must be `# %pip install -q <packages>`.")
-        code_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
-        total_code_lines += len(code_lines)
-        cell_sizes.append((len(code_lines), i + 1))
-        if len(code_lines) > MAX_CELL:
-            out.append(
-                f"Cell {i + 1} has {len(code_lines)} code lines (max {MAX_CELL}). "
-                "Split into logical cells or simplify."
-            )
-        if n_code > SETUP_CELLS and cells[i - 1][0] != "md":
-            out.append(
-                f"Cell {i + 1} has no markdown cell before it (what + why in 1-2 sentences)."
-            )
-    if total_code_lines > MAX_LINES:
-        top = ", ".join(f"Cell {idx} ({cnt})" for cnt, idx in sorted(cell_sizes, reverse=True)[:3])
-        fmt_note = (
-            f" Note: `ruff format` expanded code from "
-            f"{before_code_lines} to {total_code_lines} lines."
-            if before_code_lines is not None and total_code_lines > before_code_lines
-            else ""
-        )
-        out.append(
-            f"{total_code_lines} total code lines (max {MAX_LINES}). "
-            f"Cut scope creep or move reusable helpers to scripts/. Largest cells: {top}.{fmt_note}"
-        )
+        prev_kind = cells[i - 1][0] if i > 0 else None
+        issues, n_lines = _check_code_cell(i, n_code, lines, prev_kind)
+        out.extend(issues)
+        total_code_lines += n_lines
+        cell_sizes.append((n_lines, i + 1))
+    if total_msg := _total_budget_problem(total_code_lines, cell_sizes, before_code_lines):
+        out.append(total_msg)
     return out
 
 
@@ -187,7 +227,7 @@ def problems_in(text, path=".", before_code_lines=None):
     missing = missing_installs(tree, text, path)
     if missing:
         out.append(
-            f"Not in the install cell: {', '.join(missing)}. Add to `# %pip install -q ...`. "
+            f"Not in the install cell: {', '.join(missing)}. Add to `# # %pip install -q ...`. "
             "(If pip name differs from import name, add to PIP_NAME in check_notebook.py.)"
         )
     out += structural_problems(tree)
@@ -204,7 +244,7 @@ def _sync_ipynb(path: str) -> list[str]:
     nb_dir.mkdir(parents=True, exist_ok=True)
     sync_res = run("jupytext", "--sync", path)
     if sync_res is None:
-        return ["jupytext is not installed or not found in environment (run `uv sync`)."]
+        return ['jupytext is not installed or not found (run `pip install ".[dev]"` in .venv).']
     if sync_res.returncode != 0:
         err = (sync_res.stdout or sync_res.stderr).strip()
         return [f"jupytext --sync failed:\n{err}"]
@@ -220,12 +260,12 @@ def _sync_ipynb(path: str) -> list[str]:
 def check_one_notebook(path: str) -> list[str]:
     """Format, lint, validate, and sync a single notebook .py file."""
     problems = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         before_code_lines = _count_code_lines(f.read())
 
     fmt_res = run("ruff", "format", "--quiet", path)
     if fmt_res is None:
-        problems.append("ruff is not installed or not found in environment (run `uv sync`).")
+        problems.append('ruff is not installed or not found (run `pip install ".[dev]"` in .venv).')
     elif fmt_res.returncode != 0:
         problems.append("ruff format:\n" + (fmt_res.stderr or fmt_res.stdout).strip())
         return problems
@@ -234,7 +274,7 @@ def check_one_notebook(path: str) -> list[str]:
         if r is not None and r.returncode != 0:
             problems.append("ruff:\n" + (r.stdout or r.stderr).strip())
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         problems += problems_in(f.read(), path, before_code_lines=before_code_lines)
     return problems + _sync_ipynb(path)
 

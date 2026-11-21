@@ -1,27 +1,26 @@
-# Table: `<catalog>.<schema>.<table>`
+# Table: `<source_or_table_name>`
 
-**Description:** <Brief description of the table, entity, and business context>
+**Description:** <Brief description of the table/dataset, grain, and business context>
 
-## PySpark Loading & Preprocessing Recipe
-```python
-from pyspark.sql import functions as F
+## Loading & Preprocessing Recipe
+Document the standard query or loading snippet (SQL, pandas, DuckDB, PySpark, etc.), deduplication, and type/filter defaults:
 
-<table>_df = (
-    spark.read.table("<catalog>.<schema>.<table>")
-    # 1. Deduplication or filtering
-    # 2. Type casting or string cleaning
-)
+```sql
+SELECT
+    *
+FROM <source_or_table_name>
+-- 1. Deduplication or filtering
+-- 2. Type casting or string cleaning
 ```
 
-## Schema (`printSchema()`)
-```
-root
- |-- id: string (nullable = false)
- |-- ...
+## Schema
+```text
+- id: string (not null)
+- ...
 ```
 
-## Sample Content (`show(truncate=False)`)
-```
+## Sample Content
+```text
 +---+---+
 |...|...|
 +---+---+

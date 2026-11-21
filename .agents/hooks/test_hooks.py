@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for .agents/hooks/ and .agents/tools/."""
+"""Unit tests for .agents/hooks/, .agents/tools/, and .agents/skills/ scripts."""
 
 from __future__ import annotations
 
@@ -13,25 +13,30 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents" / "hooks"))
 sys.path.insert(0, str(ROOT / ".agents" / "tools"))
+sys.path.insert(0, str(ROOT / ".agents" / "skills" / "research" / "scripts"))
+sys.path.insert(0, str(ROOT / ".agents" / "skills" / "presentation" / "scripts"))
 
 import check_notebook  # noqa: E402
 import common  # noqa: E402
 import lint  # noqa: E402
 import nb_summary  # noqa: E402
+import papers  # noqa: E402
 import session_start  # noqa: E402
 import stop_tests  # noqa: E402
 
 
 def test_common_payload_detection_across_agents() -> None:
-    # 1. Antigravity CLI payload (`Path`)
+    # 1. Antigravity CLI payload (`Path` + `terminationReason`)
     agy_payload = {
         "hookEventName": "PostToolUse",
         "workspacePaths": [str(ROOT)],
+        "terminationReason": "USER_CANCELED",
         "toolCall": {"name": "edit_file", "args": {"Path": "scripts/helpers.py"}},
     }
     ctx_agy = common.parse_payload(io.StringIO(json.dumps(agy_payload)))
     assert ctx_agy.agent == "antigravity"
     assert ctx_agy.rel_path() == "scripts/helpers.py"
+    assert ctx_agy.termination_reason == "USER_CANCELED"
 
     # 2. Antigravity IDE payload (`TargetFile`)
     agy_ide_payload = {
@@ -68,12 +73,38 @@ def test_common_payload_detection_across_agents() -> None:
     assert ctx_cursor_stop.stop_active is True
 
 
+def test_common_find_project_tool_priority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dot_venv_tool = tmp_path / ".venv" / "bin" / "ruff"
+    venv_tool = tmp_path / "venv" / "bin" / "ruff"
+    active_venv = tmp_path / "active_env"
+    active_tool = active_venv / "bin" / "ruff"
+
+    for p in (dot_venv_tool, venv_tool, active_tool):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("#!/bin/sh\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(active_venv))
+    monkeypatch.setattr(common.shutil, "which", lambda _name: "/usr/bin/ruff")
+
+    assert common.find_project_tool(tmp_path, "ruff") == str(dot_venv_tool)
+    dot_venv_tool.unlink()
+    assert common.find_project_tool(tmp_path, "ruff") == str(venv_tool)
+    venv_tool.unlink()
+    assert common.find_project_tool(tmp_path, "ruff") == str(active_tool)
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    assert common.find_project_tool(tmp_path, "ruff") == "/usr/bin/ruff"
+    monkeypatch.setattr(common.shutil, "which", lambda _name: None)
+    assert common.find_project_tool(tmp_path, "ruff") is None
+
+
 def test_check_notebook_ast_and_install_detection() -> None:
     bad_nb = (
         "# %% [markdown]\n"
         "# # Title\n"
         "# %% \n"
-        "# %pip install -q pandas\n"
+        "# # %pip install -q pandas\n"
         "# %%\n"
         "import pandas as pd\n"
         "import sklearn.metrics\n"
@@ -86,6 +117,18 @@ def test_check_notebook_ast_and_install_detection() -> None:
     problems = check_notebook.problems_in(bad_nb, "notebooks/py/01-test.py")
     assert any("scikit-learn" in p for p in problems)
     assert any("Class 'Foo'" in p for p in problems)
+    assert not any("install cell" in p and "double-hash" in p for p in problems)
+
+    live_pip_nb = (
+        "# %% [markdown]\n"
+        "# # Title\n"
+        "# %%\n"
+        "# %pip install -q pandas\n"
+        "# %%\n"
+        "import pandas as pd\n"
+    )
+    live_problems = check_notebook.problems_in(live_pip_nb, "notebooks/py/02-test.py")
+    assert any("double-hash" in p for p in live_problems)
 
 
 def test_check_notebook_stops_on_format_error(
@@ -146,12 +189,9 @@ def test_nb_summary_tracebacks_and_out_of_order(tmp_path: Path) -> None:
 def test_session_start_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     specs = tmp_path / "specs"
     specs.mkdir()
-    (tmp_path / ".venv").mkdir()
     (specs / "01-eda.md").write_text("# 01\nStatus: executed\n")
     (specs / "02-baseline.md").write_text("# 02\nStatus: approved\n")
-    monkeypatch.setattr(
-        session_start.shutil, "which", lambda name: "/usr/bin/uv" if name == "uv" else None
-    )
+    monkeypatch.setattr(session_start, "find_project_tool", lambda _root, tool: f"/venv/{tool}")
     summary = session_start.build_context_summary(tmp_path)
     assert "01-eda (executed)" in summary
     assert "02-baseline (approved)" in summary
@@ -162,10 +202,10 @@ def test_session_start_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 def test_session_start_warns_when_toolchain_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(session_start.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(session_start, "find_project_tool", lambda _root, _tool: None)
     summary = session_start.build_context_summary(tmp_path)
-    assert "Warning:" in summary
-    assert "uv sync" in summary
+    assert "Warning: missing workspace tools" in summary
+    assert 'pip install ".[dev]"' in summary
 
 
 def test_lint_routes_python_and_notebook_files(
@@ -198,6 +238,19 @@ def test_lint_routes_python_and_notebook_files(
     assert calls[0][:2] == ("ruff", "format")
     assert calls[1][:2] == ("ruff", "check")
 
+    # Format failure stops early without calling ruff check
+    calls.clear()
+
+    class FailFmt:
+        returncode = 2
+        stdout = ""
+        stderr = "syntax error"
+
+    monkeypatch.setattr(lint, "run_project_tool", lambda _r, *a, **kw: calls.append(a) or FailFmt())
+    err = lint.check_edited_file(common.HookContext("claude", tmp_path, "scripts/helpers.py"))
+    assert "ruff format failed" in err
+    assert len(calls) == 1
+
 
 def test_stop_tests_runs_project_tests_on_code_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -225,7 +278,7 @@ def test_stop_tests_runs_project_tests_on_code_changes(
     assert called == [("pytest", "-x", "-q", "tests")]
 
 
-def test_stop_tests_runs_hook_tests_when_hooks_change(
+def test_stop_tests_runs_hook_tests_when_hooks_or_skills_change(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     hook_tests = tmp_path / ".agents" / "hooks" / "test_hooks.py"
@@ -243,7 +296,9 @@ def test_stop_tests_runs_hook_tests_when_hooks_change(
         return OkResult()
 
     monkeypatch.setattr(
-        stop_tests, "_changed_python_paths", lambda _root: [".agents/hooks/common.py"]
+        stop_tests,
+        "_changed_python_paths",
+        lambda _root: [".agents/skills/presentation/scripts/deck.py"],
     )
     monkeypatch.setattr(stop_tests, "run_project_tool", fake_run)
     ctx = common.HookContext(agent="claude", root=tmp_path)
@@ -253,7 +308,7 @@ def test_stop_tests_runs_hook_tests_when_hooks_change(
     assert called == [("pytest", "-x", "-q", ".agents/hooks/test_hooks.py")]
 
 
-def test_stop_tests_skips_without_git_or_on_notebook_only(
+def test_stop_tests_skips_without_git_or_canceled_or_notebook_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Missing .git does not trigger pytest
@@ -261,6 +316,12 @@ def test_stop_tests_skips_without_git_or_on_notebook_only(
     test_file.parent.mkdir(parents=True)
     test_file.write_text("def test_ok(): pass\n")
     assert stop_tests.check_tests_on_stop(common.HookContext("claude", tmp_path)) == (False, "")
+
+    # Antigravity USER_CANCELED skips pytest even when code changed
+    ctx_canceled = common.HookContext(
+        agent="antigravity", root=tmp_path, termination_reason="USER_CANCELED"
+    )
+    assert stop_tests.check_tests_on_stop(ctx_canceled) == (False, "")
 
     # Notebook-only changes in git skip pytest
     (tmp_path / ".git").mkdir()
@@ -280,9 +341,47 @@ def test_stop_tests_skips_without_git_or_on_notebook_only(
 def test_check_notebook_reports_format_expansion() -> None:
     body = "\n".join(f"x_{i} = {i}" for i in range(225))
     nb = (
-        "# %% [markdown]\n# # Title\n# %%\n# %pip install -q pandas\n"
+        "# %% [markdown]\n# # Title\n# %%\n# # %pip install -q pandas\n"
         "# %%\nimport pandas\n# %% [markdown]\n# Step\n# %%\n" + body
     )
     problems = check_notebook.problems_in(nb, "notebooks/py/01-test.py", before_code_lines=180)
     assert any("ruff format` expanded code from 180 to" in p for p in problems)
     assert any("Largest cells:" in p for p in problems)
+
+
+def test_papers_xml_parsing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    sample_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <entry>
+        <id>http://arxiv.org/abs/2401.00001v1</id>
+        <published>2024-01-01T00:00:00Z</published>
+        <title>Test Paper Title</title>
+        <summary>Short abstract summary.</summary>
+        <author><name>Ada Lovelace</name></author>
+      </entry>
+    </feed>"""
+    monkeypatch.setattr(papers, "get", lambda _url: sample_xml)
+    papers.search_arxiv("test query", 1)
+    out = capsys.readouterr().out
+    assert "Test Paper Title (2024)" in out
+    assert "Ada Lovelace" in out
+    assert "arXiv:2401.00001v1" in out
+
+
+def test_deck_check_example_json_no_warnings(capsys: pytest.CaptureFixture[str]) -> None:
+    pytest.importorskip("pptx")
+    import deck  # noqa: E402
+
+    example_path = ROOT / ".agents" / "skills" / "presentation" / "assets" / "example.json"
+    spec = json.loads(example_path.read_text(encoding="utf-8"))
+    deck.check(spec)
+    assert capsys.readouterr().out == ""
+
+    no_sections = {
+        "title": "Demo",
+        "slides": [{"type": "agenda", "notes": "Agenda without sections."}],
+    }
+    prs = deck.build(no_sections, example_path.parent)
+    assert len(prs.slides) == 2

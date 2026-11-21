@@ -11,12 +11,12 @@ Captures what we are doing, what data is involved, and what will be produced bef
 
 1. **Context & output check:**
    List `specs/` to find the next sequential number (`NN` = highest existing number + 1, starting with `01`).
-   If continuing or debugging previous work, read the relevant `specs/<NN-name>.md`, its code (`notebooks/py/<NN-name>.py`, `scripts/`, or `apps/`), and—for notebooks—inspect executed outputs with `uv run python .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`.
+   If continuing or debugging previous work, read the relevant `specs/<NN-name>.md`, its code (`notebooks/py/<NN-name>.py`, `scripts/`, or `apps/`), and—for notebooks—inspect executed outputs with `python3 .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`.
 2. **Clarify scope & route deliverables:**
    The user does not need to know folder conventions (`specs/`, `models/`, `apps/`, `scripts/`, `tests/`), initiative names (`01-name`), or exact evaluation mechanics. When a prompt is open-ended:
-   - Propose 2–3 concrete, opinionated options (scope, evaluation, baseline, or approach) via `ask_question`.
+   - Propose 2–3 concrete, opinionated options (scope, evaluation, baseline, or approach) via `ask_question` / `AskUserQuestion`.
    - Propose a clean kebab-case initiative name (e.g., `01-sales-eda`, `02-baseline-model`) and route deliverables to the right folder.
-   - Consult `data-catalog` when lake tables are involved.
+   - Consult `data-catalog` when project tables/data sources are involved.
 3. **Draft the spec (`Status: draft`):**
    Copy `assets/spec-template.md` to `specs/<NN-name>.md` and fill in every section (including sources, deduplication, filters, transforms, joins, and any defaults under `## Assumptions (confirm)`).
 4. **Confirm before coding (`Status: approved`):**

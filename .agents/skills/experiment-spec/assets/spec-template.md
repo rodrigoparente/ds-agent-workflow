@@ -2,13 +2,13 @@
 
 Status: draft | approved | executed
 Builds on: <NN-name> (optional, delete if none)
-Research: docs/research/<topic>.md (optional, delete if none)
+Research: docs/research/<name>.md (optional, delete if none)
 
 ## Overview
 What we are exploring, analyzing, or building. Clear, concise description without requiring artificial goals or metrics.
 
 ## Data & Inputs
-Source tables, datasets, files, artifacts, or parameters (consult `data-catalog` if using lake tables).
+Source tables, datasets, files, artifacts, or parameters (consult `data-catalog` if using documented project tables).
 Clearly document the data management process:
 - Sources & join keys: ...
 - Deduplication & filters: ...

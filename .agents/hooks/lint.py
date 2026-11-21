@@ -29,11 +29,13 @@ def check_edited_file(ctx: HookContext) -> str:
         )
         return (r.stdout + "\n" + r.stderr).strip() if r.returncode != 0 else ""
 
-    if run_project_tool(ctx.root, "ruff", "format", "--quiet", str(target)) is None:
-        return (
-            f"ruff is not installed or not found in environment (run `uv sync`) "
-            f"while checking {rel}."
-        )
+    fmt = run_project_tool(ctx.root, "ruff", "format", "--quiet", str(target))
+    if fmt is None:
+        return f'ruff is not installed (run `pip install ".[dev]"` in .venv) while checking {rel}.'
+    if fmt.returncode != 0:
+        out = (fmt.stderr or fmt.stdout).strip()
+        return f"ruff format failed in {rel}:\n{out}"
+
     r = run_project_tool(
         ctx.root, "ruff", "check", "--fix", "--unfixable", "F401", "--quiet", str(target)
     )

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import emit_session_start, parse_payload, run_project_tool
+from common import emit_session_start, find_project_tool, parse_payload, run_project_tool
 
 
 def _git_stdout(root: Path, *args: str) -> str | None:
@@ -27,7 +27,12 @@ def _has_nbstripout_filter(root: Path) -> bool:
 
 def ensure_nbstripout_installed(root: Path) -> None:
     """Idempotently register nbstripout git filter in `.git/config`."""
-    if (root / ".git").exists() and shutil.which("git") and not _has_nbstripout_filter(root):
+    if (
+        (root / ".git").exists()
+        and shutil.which("git")
+        and not _has_nbstripout_filter(root)
+        and find_project_tool(root, "nbstripout") is not None
+    ):
         run_project_tool(root, "nbstripout", "--install")
 
 
@@ -42,24 +47,16 @@ def _read_spec_status(spec_path: Path) -> str:
 
 def _toolchain_warnings(root: Path) -> list[str]:
     warnings: list[str] = []
-    has_uv = bool(shutil.which("uv"))
-    has_venv = (root / ".venv").exists()
-    if not has_uv and not has_venv:
+    missing = [t for t in ("ruff", "jupytext", "pytest") if find_project_tool(root, t) is None]
+    if missing:
         warnings.append(
-            "Warning: `uv` not found on PATH and `.venv/` is missing; "
-            "install `uv` and run `uv sync`."
-        )
-    elif not has_uv:
-        warnings.append(
-            "Warning: `uv` not found on PATH; hooks will fall back to `.venv/bin/` where present."
-        )
-    elif not has_venv:
-        warnings.append(
-            "Warning: `.venv/` is missing; run `uv sync` to enable lint, notebook sync, and tests."
+            f"Warning: missing workspace tools ({', '.join(missing)}); "
+            'run `python3 -m venv .venv && .venv/bin/pip install ".[dev]"`.'
         )
     if (root / ".git").exists() and shutil.which("git") and not _has_nbstripout_filter(root):
         warnings.append(
-            "Warning: `nbstripout` git filter is not configured; run `uv run nbstripout --install`."
+            "Warning: `nbstripout` git filter is not configured; "
+            "activate `.venv` and run `nbstripout --install`."
         )
     return warnings
 
