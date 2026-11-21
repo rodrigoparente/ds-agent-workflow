@@ -385,3 +385,43 @@ def test_deck_check_example_json_no_warnings(capsys: pytest.CaptureFixture[str])
     }
     prs = deck.build(no_sections, example_path.parent)
     assert len(prs.slides) == 2
+
+
+def test_check_notebook_flags_relative_project_paths() -> None:
+    bad_nb = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q joblib pandas\n"
+        "# %%\nfrom pathlib import Path\nimport joblib\nimport pandas as pd\n"
+        "# %% [markdown]\n# ## Save\n"
+        "# %%\n"
+        'NAME = "01-test"\n'
+        'Path("models").mkdir(exist_ok=True)\n'
+        'joblib.dump({}, "models/best.joblib")\n'
+        'joblib.dump({}, f"models/{NAME}.joblib")\n'
+        'df = pd.read_parquet("data/01.parquet")\n'
+    )
+    problems = check_notebook.problems_in(bad_nb, "notebooks/py/01-test.py")
+    rel_errors = [p for p in problems if p.startswith("Relative path")]
+    assert len(rel_errors) == 4
+
+    good_nb = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q joblib\n"
+        "# %%\nfrom pathlib import Path\nimport joblib\n"
+        "# %% [markdown]\n# ## Config\n"
+        "# %%\n"
+        'NAME = "01-test"\n'
+        "ROOT = Path.cwd().parent\n"
+        'MODELS = ROOT / "models"\n'
+        'DATA = ROOT / "data"\n'
+        'FIGURES = ROOT / "docs" / "figures"\n'
+        'joblib.dump({}, MODELS / f"{NAME}.joblib")\n'
+        'joblib.dump({}, ROOT / f"models/{NAME}.joblib")\n'
+        'print("Saved to models/best.joblib")\n'
+    )
+    assert check_notebook.problems_in(good_nb, "notebooks/py/01-test.py") == []
+
+    skeleton_path = ROOT / ".agents" / "skills" / "write-code" / "assets" / "skeleton.py"
+    skeleton_problems = check_notebook.problems_in(skeleton_path.read_text(encoding="utf-8"))
+    assert not [p for p in skeleton_problems if p.startswith("Relative path")]
+

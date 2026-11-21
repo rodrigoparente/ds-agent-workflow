@@ -33,6 +33,7 @@ SEED = 42
 # Parameters, only if the spec lists some. Example:
 # SAMPLE_FRAC = 1.0
 FIGURES.mkdir(parents=True, exist_ok=True)
+# MODELS.mkdir(parents=True, exist_ok=True)  # always use MODELS / ..., never "models/..."
 np.random.seed(SEED)
 
 # %% [markdown]

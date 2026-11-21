@@ -36,6 +36,17 @@ PIP_NAME = {
 PROVIDED = {"IPython", "scripts", "apps"}  # workspace & notebook builtins
 # calls that need a package which is never imported explicitly
 IMPLICIT = {".to_markdown(": "tabulate", "_parquet(": "pyarrow", "read_excel(": "openpyxl"}
+BARE_DIRS = {"models", "data"}
+REL_PATH_PREFIXES = (
+    "models/",
+    "data/",
+    "docs/figures/",
+    "./models",
+    "./data",
+    "../models",
+    "../data",
+    "../docs/figures",
+)
 
 STRING = re.compile(r'("""|\'\'\').*?\1', re.S)  # long SQL lives in triple-quoted strings
 
@@ -218,6 +229,62 @@ def cell_problems(cells, before_code_lines=None):
     return out
 
 
+def _string_prefix(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr) and node.values:
+        first = node.values[0]
+        if isinstance(first, ast.Constant) and isinstance(first.value, str):
+            return first.value
+    return None
+
+
+def _is_div_rhs(node: ast.AST, parent: ast.AST | None) -> bool:
+    return isinstance(parent, ast.BinOp) and isinstance(parent.op, ast.Div) and parent.right is node
+
+
+def _call_name(node: ast.Call) -> str:
+    if isinstance(node.func, ast.Name):
+        return node.func.id
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr
+    return ""
+
+
+def _relative_path_error(node: ast.AST, parent: ast.AST | None) -> str | None:
+    if _is_div_rhs(node, parent):
+        return None
+    prefix = _string_prefix(node)
+    if prefix and prefix.startswith(REL_PATH_PREFIXES) and not isinstance(parent, ast.JoinedStr):
+        return (
+            f"Relative path '{prefix}...' (line {node.lineno}) breaks when Jupyter runs from "
+            "notebooks/. Use DATA / ..., MODELS / ..., or FIGURES / ... (anchored to ROOT)."
+        )
+    if (
+        isinstance(node, ast.Call)
+        and _call_name(node) in {"Path", "mkdir", "makedirs"}
+        and node.args
+        and (bad := _string_prefix(node.args[0])) in BARE_DIRS
+    ):
+        return (
+            f"Relative path '{bad}' (line {node.lineno}) breaks when Jupyter runs from "
+            "notebooks/. Use DATA, MODELS, or FIGURES (anchored to ROOT)."
+        )
+    return None
+
+
+def relative_path_problems(tree) -> list[str]:
+    """Flag bare project-relative paths that break when Jupyter executes from notebooks/."""
+    if tree is None:
+        return []
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+    out: list[str] = []
+    for node in ast.walk(tree):
+        if msg := _relative_path_error(node, parents.get(node)):
+            out.append(msg)
+    return out
+
+
 def problems_in(text, path=".", before_code_lines=None):
     try:
         tree = ast.parse(text)
@@ -231,6 +298,7 @@ def problems_in(text, path=".", before_code_lines=None):
             "(If pip name differs from import name, add to PIP_NAME in check_notebook.py.)"
         )
     out += structural_problems(tree)
+    out += relative_path_problems(tree)
     cells = parse_cells(collapse_strings(text))
     if not cells or cells[0][0] != "md":
         out.append("First cell must be markdown: title, overview/question, and spec link.")
