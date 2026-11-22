@@ -20,16 +20,17 @@ Output language: English by default (or match the user's requested language).
 
 The user often doesn't know what they want, or doesn't know the terms. Do not research until the goal is clear.
 
-- Use the interactive question tool (`ask_question` / `AskUserQuestion`) with selectable options. The user can add their own answer. 1-3 questions per round; keep going until the goal is clear.
+- Use `ask_question` / `AskUserQuestion` with selectable options (1-3 questions per round; keep going until the goal is clear).
 - Find out, in this order, skipping whatever the user already said:
-  1. **Topic**: what do they want to understand, and what triggered it?
-  2. **Purpose**: what will they do with it (learn, decide, build, write, teach)?
-  3. **Current knowledge**: what do they already know? Ask only if they haven't said.
-  4. **Focus**: specific angles or terms. If they don't know any, run a quick web search to see the landscape and offer the subtopics you found as options.
-  5. **Mode**: `quick` or `deep`.
-  6. **File name**: ask the user what to call it. Don't auto-name.
+  1. **Topic:** what do they want to understand, and what triggered it?
+  2. **Purpose:** what will they do with it (learn, decide, build, write, teach)?
+  3. **Current knowledge:** what do they already know? Ask only if they haven't said.
+  4. **Focus:** specific angles or terms. Whenever the user is unsure, run a quick landscape search *first* and turn the real subtopics you find into concrete selectable options instead of asking generic questions.
+  5. **Mode:** `quick` or `deep`.
 - Never invent the goal or the question. If something is missing, ask or offer options.
-- When clear, restate the understanding in 2-3 lines and start researching. No plan approval step.
+- **Scope handoff:**
+  - **`quick`:** Restate the understanding (topic, focus, and proposed `docs/research/<suggested-name>.md`) in 2-3 lines and start researching immediately (no approval gate).
+  - **`deep`:** Share a 3-4 line scope recap (core questions to answer, subtopics, and proposed `docs/research/<suggested-name>.md`, inviting a rename if desired) and **STOP for a quick user confirmation** before launching the 20+ source deep dive.
 
 ## 2. Research
 
@@ -51,7 +52,7 @@ python3 .agents/skills/research/scripts/papers.py search "query" --source arxiv 
 ```
 
 - Start with survey papers for orientation, then specific papers, then the most-cited foundational ones.
-- Read abstracts to triage; read the full text (`https://arxiv.org/abs/<id>` or `/pdf/<id>`) of the papers that matter most.
+- Read abstracts to triage; read the full text via `https://arxiv.org/html/<id>` when available (falling back to `/abs/<id>`).
 - Aim for 20+ sources across web and papers. Mark papers you only read the abstract of.
 
 ## 3. Write `docs/research/<name>.md`
