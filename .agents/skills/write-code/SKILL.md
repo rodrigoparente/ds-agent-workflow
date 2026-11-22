@@ -32,8 +32,8 @@ Implements an approved spec (`specs/<NN-name>.md`) into `notebooks/py/<NN-name>.
 
 3. **Verify static checks & tests:**
    - Fix any formatting, lint, notebook-budget, relative-path, or `.ipynb` sync issues reported by automated hooks (or run `python3 .agents/tools/check_notebook.py notebooks/py/<NN-name>.py` directly).
-   - If new dependencies were added to `pyproject.toml` and aren't installed in `.venv` yet, ask the user for confirmation to run `.venv/bin/pip install ".[dev]"` before running `pytest`, or include `pip install ".[dev]"` as the first handoff command below.
-   - Run `.venv/bin/pytest` (or `pytest` if `.venv` is activated) and quick synthetic-data probes via `python3 -c` to verify helper/app logic before handoff.
+   - If new dependencies were added to `pyproject.toml` and aren't installed in `.venv` yet, ask the user for confirmation to run `uv sync` before running `uv run pytest`, or include `uv sync` as the first handoff command below.
+   - Run `uv run pytest` and quick synthetic-data probes via `python3 -c` (or `uv run python -c`) to verify helper/app logic before handoff.
 
 4. **Handoff for user execution:**
-   Do **not** run what you create in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Never hand off a run command for code whose dependencies aren't declared in `pyproject.toml` and flagged for installation (if new packages were added and not yet installed in `.venv`, start the handoff command with `pip install ".[dev]"`). Tell the user the code is statically checked (and synced to `notebooks/<NN-name>.ipynb` or tested via `pytest`), ask them to run it (`jupyter lab`, `python scripts/<name>.py`, or `<app-command>` inside `.venv`), and wait for results.
+   Do **not** run what you create in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Never hand off a run command for code whose dependencies aren't declared in `pyproject.toml` and flagged for installation (if new packages were added and not yet synced, start the handoff command with `uv sync`). Tell the user the code is statically checked (and synced to `notebooks/<NN-name>.ipynb` or tested via `pytest`), ask them to run it (`uv run jupyter lab`, `uv run python scripts/<name>.py`, or `uv run <app-command>`), and wait for results.

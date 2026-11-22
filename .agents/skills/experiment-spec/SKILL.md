@@ -24,7 +24,7 @@ Captures what we are doing, what data is involved, and what will be produced bef
 
 ## Iterating vs. New Specs
 
-- **Iterating on an existing initiative (`<NN-name>`):** Use this for bug fixes, filter/feature tweaks, or follow-up steps on the *same* initiative—even if `Status` was `executed`. Update `specs/<NN-name>.md` *before* touching code, append `- *[v2 - Summary]:* ...` under `## Updates`, set `Status: approved`, link any research via `Research: docs/research/<topic>.md`, and note `REFRESH_DATA = True` if `## Data & Inputs` changed.
+- **Iterating on an existing initiative (`<NN-name>`):** Use this for bug fixes, filter/feature tweaks, or follow-up steps on the *same* initiative—even if `Status` was `executed`. Update `specs/<NN-name>.md` *before* touching code, append `- *[v2 - Summary]:* ...` under `## Updates`, set `Status: approved`, link any research via `Research: docs/research/<name>.md`, and note `REFRESH_DATA = True` if `## Data & Inputs` changed.
 - **Starting a new initiative (`<(NN+1)-name>`):** Use this for a new phase, distinct modeling approach, separate question, or operationalizing prior work into `scripts/` or `apps/`. Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>` and reference reused data, `models/`, or `scripts/`.
 - **Cross-initiative feedback (`<(NN+1)-name>` → `<NN-name>`):** When downstream work exposes an upstream bug or missing requirement, update the upstream spec and code first, then update the downstream spec and code.
 

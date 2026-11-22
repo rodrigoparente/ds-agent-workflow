@@ -56,29 +56,40 @@ def _format_output(out: dict, limit: int) -> list[str]:
     return lines
 
 
-def _execution_footer(n_outputs: int, executed: int, total: int, counts: list[int]) -> str:
+def _execution_footer(
+    n_outputs: int, executed: int, total: int, counts: list[int], has_error: bool = False
+) -> str:
     if n_outputs == 0 and executed == 0:
-        return "\nNO OUTPUTS: this notebook has not been run yet."
+        return (
+            "\nNO OUTPUTS: this notebook has not been run yet "
+            "(or was run in JupyterLab without saving via Ctrl+S)."
+        )
     summary = f"\n[Execution summary: {executed}/{total} code cells run]"
     if counts != sorted(counts) or len(set(counts)) != len(counts):
         summary += " — WARNING: cells were executed out of order; consider Restart & Run All."
+    if executed < total or has_error:
+        summary += (
+            " — NOTE: if you already ran all cells in JupyterLab, "
+            "save (Ctrl+S) so disk outputs update."
+        )
     return summary
 
 
 def _format_code_cell(
     idx: int, cell: dict, show_code: bool, limit: int
-) -> tuple[list[str], int, int | None, bool]:
+) -> tuple[list[str], int, int | None, bool, bool]:
     src = text(cell.get("source", ""))
     ec = cell.get("execution_count")
     cell_outputs = cell.get("outputs", [])
     was_run = ec is not None or bool(cell_outputs)
+    has_error = any(out.get("output_type") == "error" for out in cell_outputs)
     tag = f" (exec #{ec})" if ec is not None else (" [UNRUN]" if not cell_outputs else "")
     first = src.splitlines()[0] if src.strip() else ""
     header = f"\n[code {idx}{tag}]\n{src}" if show_code else f"\n[code {idx}{tag}] {first} ..."
     lines = [header]
     for out in cell_outputs:
         lines.extend(_format_output(out, limit))
-    return lines, len(cell_outputs), ec if isinstance(ec, int) else None, was_run
+    return lines, len(cell_outputs), ec if isinstance(ec, int) else None, was_run, has_error
 
 
 def summarize_notebook(path: str, show_code: bool = False, limit: int = 1500) -> str:
@@ -89,6 +100,7 @@ def summarize_notebook(path: str, show_code: bool = False, limit: int = 1500) ->
     n_outputs = 0
     total_code_cells = 0
     executed_code_cells = 0
+    has_error = False
     exec_counts: list[int] = []
 
     for i, cell in enumerate(nb.get("cells", [])):
@@ -96,16 +108,16 @@ def summarize_notebook(path: str, show_code: bool = False, limit: int = 1500) ->
             out_lines.append(f"\n[md {i}]\n{text(cell.get('source', ''))}")
             continue
         total_code_cells += 1
-        lines, cell_n_out, ec, was_run = _format_code_cell(i, cell, show_code, limit)
+        lines, cell_n_out, ec, was_run, cell_err = _format_code_cell(i, cell, show_code, limit)
         out_lines.extend(lines)
         n_outputs += cell_n_out
-        if was_run:
-            executed_code_cells += 1
+        executed_code_cells += int(was_run)
+        has_error = has_error or cell_err
         if ec is not None:
             exec_counts.append(ec)
 
     out_lines.append(
-        _execution_footer(n_outputs, executed_code_cells, total_code_cells, exec_counts)
+        _execution_footer(n_outputs, executed_code_cells, total_code_cells, exec_counts, has_error)
     )
     return "\n".join(out_lines)
 

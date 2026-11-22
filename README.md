@@ -11,7 +11,7 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 - **Human-in-the-Loop Execution:** The agent collaborates on specs, writes and lints code, runs unit tests, and summarizes results—but **you always run code** in Jupyter Lab or your terminal.
 - **Spec-First Workflow ([OpenSpec](https://github.com/Fission-AI/OpenSpec)-inspired):** Every initiative starts with a lightweight agreement in `specs/<NN-name>.md` (`draft → approved → executed`). Follow-up changes update the spec first so documentation and code never drift.
 - **Agent and Git-Friendly Notebooks ([Jupytext](https://jupytext.readthedocs.io/) + [nbstripout](https://github.com/kynan/nbstripout)):** The agent edits clean, flat Python files in `notebooks/py/<NN-name>.py`, which automatically sync to `notebooks/<NN-name>.ipynb`. Both are tracked in Git: `nbstripout` automatically strips heavy cell outputs on `git commit` / `git diff` while preserving your local executed outputs on disk so `.agents/tools/nb_summary.py` can read them.
-- **Shareable Notebooks, Standard Python Tooling:** Workspace tooling uses standard `venv` + `pip` (`pyproject.toml`, zero extra package-manager prerequisites). Every notebook includes a commented `# %pip install` cell at the top (`# # %pip install` in `.py`) so local runs stay offline/fast while anyone you share `.ipynb` with can uncomment and run standalone.
+- **Managed with `uv` + Shareable Notebooks:** Project packages live in `pyproject.toml` and `uv.lock` (managed with [uv](https://docs.astral.sh/uv/), with zero `build/` or `*.egg-info/` artifacts). Every notebook also carries a commented `# %pip install` cell at the top (`# # %pip install` in `.py`) so local runs stay fast via `uv sync` while anyone you share `.ipynb` with can uncomment and run standalone.
 - **Cross-Agent Automation Hooks:** Shared lifecycle hooks in `.agents/hooks/` run across **Google Antigravity** (`.agents/hooks.json`), **Claude Code** (`.claude/settings.json`), and **Cursor** (which imports `.claude/settings.json` and `.agents/skills/`).
 
 ---
@@ -23,16 +23,14 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 git clone <template-repo-url> my-ds-project && cd my-ds-project
 rm -rf .git README.md && git init
 
-# 2. Create a virtual environment and install workspace tooling
-python3 -m venv .venv
-source .venv/bin/activate
-pip install ".[dev]"
+# 2. Install workspace tooling (JupyterLab, Jupytext, nbstripout, Ruff, Pytest, python-pptx, pandoc)
+uv sync
 
 # 3. Activate the nbstripout Git filter (also runs automatically on agent SessionStart)
-nbstripout --install
+uv run nbstripout --install
 
 # 4. Launch Jupyter Lab to run notebooks interactively
-jupyter lab
+uv run jupyter lab
 ```
 
 Open the repository in your AI assistant and ask in plain language:
@@ -82,7 +80,7 @@ Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules,
 
 ## Lifecycle Hooks & Permissions
 
-- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (format, AST/budget/install checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
+- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (format, AST/budget/install/path/plot checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
 - **`stop_tests.py` (`Stop`):** Runs `pytest -x -q` before the agent finishes when Python files under `scripts/`, `apps/`, `tests/` (if `tests/test_*.py` exists) or `.agents/hooks/`, `.agents/tools/`, `.agents/skills/` were modified (skipped on interrupted Antigravity stops).
 - **`session_start.py` (`SessionStart`):** Injects active Git branch, spec statuses, and next `NN-` prefix, installs the `nbstripout` Git filter, and warns if workspace tooling is missing.
-- **Permissions (`.claude/settings.json`):** Allows safe helper/test commands (`pytest`, `ruff`, `.agents/tools/*`, skill helpers), asks before `git commit`/`push` or `pip install`/`uninstall`, and denies reads of `.env*`, `~/.ssh`, `./data/`, or direct edits to `notebooks/*.ipynb`.
+- **Permissions (`.claude/settings.json`):** Allows safe helper/test commands (`uv run pytest`, `uv run ruff`, `.agents/tools/*`, skill helpers), asks before `git commit`/`push` or `uv add`/`remove`/`sync`, and denies reads of `.env*`, `~/.ssh`, `./data/`, or direct edits to `notebooks/*.ipynb`.

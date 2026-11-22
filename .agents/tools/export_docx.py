@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Convert a Markdown report to a Word (.docx) document using Pandoc.
 
-Usage: .venv/bin/python .agents/tools/export_docx.py docs/reports/<NN-name>.md
-Requires `pypandoc-binary` (installed with the project dependencies).
+Usage: uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md
+Requires `pypandoc-binary` (installed via `uv sync`).
 """
 
 import sys
@@ -14,8 +14,8 @@ def main(paths: list[str]) -> None:
         import pypandoc
     except ImportError:
         sys.exit(
-            'pypandoc-binary is not installed. Run inside your project .venv after '
-            '`pip install ".[dev]"`.'
+            "pypandoc-binary is not installed. Run `uv sync` and execute with "
+            "`uv run python .agents/tools/export_docx.py ...`."
         )
 
     for arg in paths:

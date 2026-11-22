@@ -45,12 +45,8 @@ path = DATA / f"{NAME}.parquet"
 if path.exists() and not REFRESH_DATA:
     df = pd.read_parquet(path)
 else:
-    # Query source data (e.g. SQL, BigQuery/Spark, or load raw file)
-    SQL = """
-    SELECT *
-    FROM `project.dataset.table`
-    """
-    # df = spark.sql(SQL).toPandas()
+    # Load source data (e.g. SQL query, database, or raw file)
+    # df = pd.read_csv(DATA / "raw.csv")
     DATA.mkdir(exist_ok=True)
     df.to_parquet(path)
 print(df.shape)

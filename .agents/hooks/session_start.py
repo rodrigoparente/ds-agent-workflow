@@ -50,13 +50,12 @@ def _toolchain_warnings(root: Path) -> list[str]:
     missing = [t for t in ("ruff", "jupytext", "pytest") if find_project_tool(root, t) is None]
     if missing:
         warnings.append(
-            f"Warning: missing workspace tools ({', '.join(missing)}); "
-            'run `python3 -m venv .venv && .venv/bin/pip install ".[dev]"`.'
+            f"Warning: missing workspace tools ({', '.join(missing)}); run `uv sync`."
         )
     if (root / ".git").exists() and shutil.which("git") and not _has_nbstripout_filter(root):
         warnings.append(
             "Warning: `nbstripout` git filter is not configured; "
-            "activate `.venv` and run `nbstripout --install`."
+            "run `uv run nbstripout --install`."
         )
     return warnings
 

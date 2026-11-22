@@ -1,8 +1,6 @@
 # Environments & caches
 .venv/
 venv/
-*.egg-info/
-build/
 node_modules/
 __pycache__/
 *.pyc

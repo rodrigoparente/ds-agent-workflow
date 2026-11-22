@@ -2,44 +2,43 @@
 
 **Description:** Central identity table containing registered user profiles, account statuses, and timestamps.
 
-## PySpark Loading & Preprocessing Recipe
-Applies deduplication on `user_id` (retaining the most recently updated record) and standardizes string fields and timestamps.
+## Loading & Preprocessing Recipe
+Deduplicates on `user_id` (keeping the latest `updated_at`) and standardizes emails, usernames, booleans, and timestamps:
 
-```python
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
-
-# 1. Deduplication: keep the latest record per user_id
-user_window = Window.partitionBy("user_id").orderBy(F.col("updated_at").desc_nulls_last())
-
-# 2. Load, deduplicate, and standardize types
-users_df = (
-    spark.read.table("lake.core.users")
-    .withColumn("row_num", F.row_number().over(user_window))
-    .filter(F.col("row_num") == 1)
-    .drop("row_num")
-    .withColumn("email", F.lower(F.trim(F.col("email"))))
-    .withColumn("username", F.trim(F.col("username")))
-    .withColumn("created_at", F.to_timestamp(F.col("created_at")))
-    .withColumn("is_active", F.coalesce(F.col("is_active"), F.lit(False)))
+```sql
+WITH ranked AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC NULLS LAST) AS row_num
+    FROM lake.core.users
 )
+SELECT
+    user_id,
+    TRIM(username) AS username,
+    LOWER(TRIM(email)) AS email,
+    status,
+    COALESCE(is_active, FALSE) AS is_active,
+    country_code,
+    CAST(created_at AS TIMESTAMP) AS created_at,
+    CAST(updated_at AS TIMESTAMP) AS updated_at
+FROM ranked
+WHERE row_num = 1
 ```
 
-## Schema (`printSchema()`)
-```
-root
- |-- user_id: string (nullable = false)
- |-- username: string (nullable = true)
- |-- email: string (nullable = true)
- |-- status: string (nullable = true)
- |-- is_active: boolean (nullable = false)
- |-- country_code: string (nullable = true)
- |-- created_at: timestamp (nullable = true)
- |-- updated_at: timestamp (nullable = true)
+## Schema
+```text
+- user_id: string (not null)
+- username: string (nullable)
+- email: string (nullable)
+- status: string (nullable)
+- is_active: boolean (not null)
+- country_code: string (nullable)
+- created_at: timestamp (nullable)
+- updated_at: timestamp (nullable)
 ```
 
-## Sample Content (`show(truncate=False)`)
-```
+## Sample Content
+```text
 +------------------------------------+------------+----------------------+--------+---------+------------+-------------------+-------------------+
 |user_id                             |username    |email                 |status  |is_active|country_code|created_at         |updated_at         |
 +------------------------------------+------------+----------------------+--------+---------+------------+-------------------+-------------------+

@@ -3,9 +3,10 @@
 
 Usage: python3 .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
 Runs ruff format, enforces the size/documentation budget from write-code/SKILL.md,
-checks that every imported package is in the install cell, then syncs the paired .ipynb
-in notebooks/. Prints problems and exits 1 if anything is wrong. Any tool or person can
-run it; coding agents also run it automatically through .agents/hooks/lint.py.
+checks that every imported package is in the install cell, catches bare relative project
+paths and unsaved plots, then syncs the paired .ipynb in notebooks/. Prints problems
+and exits 1 if anything is wrong. Any tool or person can run it; coding agents also run
+it automatically through .agents/hooks/lint.py.
 """
 
 import ast
@@ -363,7 +364,7 @@ def _sync_ipynb(path: str) -> list[str]:
     nb_dir.mkdir(parents=True, exist_ok=True)
     sync_res = run("jupytext", "--sync", path)
     if sync_res is None:
-        return ['jupytext is not installed or not found (run `pip install ".[dev]"` in .venv).']
+        return ["jupytext is not installed or not found (run `uv sync`)."]
     if sync_res.returncode != 0:
         err = (sync_res.stdout or sync_res.stderr).strip()
         return [f"jupytext --sync failed:\n{err}"]
@@ -384,7 +385,7 @@ def check_one_notebook(path: str) -> list[str]:
 
     fmt_res = run("ruff", "format", "--quiet", path)
     if fmt_res is None:
-        problems.append('ruff is not installed or not found (run `pip install ".[dev]"` in .venv).')
+        problems.append("ruff is not installed or not found (run `uv sync`).")
     elif fmt_res.returncode != 0:
         problems.append("ruff format:\n" + (fmt_res.stderr or fmt_res.stdout).strip())
         return problems

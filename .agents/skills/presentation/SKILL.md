@@ -33,19 +33,23 @@ Read `references/story.md`. Co-design the narrative section by section (context 
 - When there is a real framing choice (e.g., executive verdict-first vs. technical walk-through, or which saved charts from `docs/figures/` to highlight), offer 2-3 concrete options via `ask_question` / `AskUserQuestion` rather than guessing.
 - Present the **complete numbered slide-by-slide outline** showing for every slide:
   `Slide # · Title (full-sentence message) · Layout/evidence (and figure path if used) · 1-line spoken talking point`
-- **HARD STOP — wait for explicit user approval:** Ask the user to approve or adjust the outline. **Do NOT create `slides.json` or run `deck.py` until the user explicitly approves the slide outline.**
+- **HARD STOP — wait for explicit user approval:**
+  - Ask the user to approve or revise the outline (e.g., via `ask_question` / `AskUserQuestion`: `(Recommended) Approve outline and build deck` vs. `Make changes`).
+  - **Any request to add, remove, or change slides/topics is a revision request—NOT approval to build.** Update and show the full revised numbered outline, then **STOP again** for explicit approval.
+  - **Do NOT create `slides.json` or run `deck.py` until the user explicitly approves the latest shown outline with no pending edits.**
 
 ## 4. Build
 
 Create `docs/presentations/<name>/` and copy any used figures into `docs/presentations/<name>/figures/`. Write `docs/presentations/<name>/slides.json` following `assets/example.json`:
 
 - Supported evidence layouts: `bullets`, `image`, `image`+`bullets`, `images`, `stats`, `callout`, `bars`, `compare`, `table`, `flow`, `timeline`, `grid`.
+- **Do not prefix section titles with numbers** (`1.`, `01`, `Section 1:`)—`deck.py` auto-numbers section dividers and the agenda.
 - **Presenter notes:** Write full, natural **read-aloud spoken text** (3-6 sentences per slide) that explains *why*, adds methodology/business context beyond the slide, and transitions smoothly to the next slide—never meta-instructions like *"Explain X"*.
 
 Then build:
 
 ```bash
-.venv/bin/python .agents/skills/presentation/scripts/deck.py docs/presentations/<name>/slides.json
+uv run python .agents/skills/presentation/scripts/deck.py docs/presentations/<name>/slides.json
 ```
 
 Fix every `WARNING` the script prints. The result is `docs/presentations/<name>/<name>.pptx` with editable text.

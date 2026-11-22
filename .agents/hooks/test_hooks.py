@@ -184,6 +184,19 @@ def test_nb_summary_tracebacks_and_out_of_order(tmp_path: Path) -> None:
     assert "ERROR ZeroDivisionError: division by zero" in out
     assert "\x1b" not in out  # ANSI stripped
     assert "WARNING: cells were executed out of order" in out
+    assert "Ctrl+S" in out
+
+    clean_nb = {
+        "cells": [
+            {"cell_type": "markdown", "source": ["# 01 Clean"]},
+            {"cell_type": "code", "execution_count": 1, "source": ["x = 1"], "outputs": []},
+        ]
+    }
+    clean_file = tmp_path / "clean.ipynb"
+    clean_file.write_text(json.dumps(clean_nb))
+    clean_out = nb_summary.summarize_notebook(str(clean_file))
+    assert "[Execution summary: 1/1 code cells run]" in clean_out
+    assert "Ctrl+S" not in clean_out
 
 
 def test_session_start_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -205,7 +218,7 @@ def test_session_start_warns_when_toolchain_missing(
     monkeypatch.setattr(session_start, "find_project_tool", lambda _root, _tool: None)
     summary = session_start.build_context_summary(tmp_path)
     assert "Warning: missing workspace tools" in summary
-    assert 'pip install ".[dev]"' in summary
+    assert "uv sync" in summary
 
 
 def test_lint_routes_python_and_notebook_files(
@@ -403,18 +416,57 @@ def test_deck_check_example_json_no_warnings(
         "title": "Bad",
         "slides": [
             {
+                "type": "section",
+                "title": "1. What is Collaborative Filtering?",
+                "notes": "Section intro.",
+            },
+            {
                 "type": "content",
                 "title": "Bad slide",
                 "image": "missing.png",
                 "compare": [{"title": str(i), "bullets": []} for i in range(4)],
                 "notes": "Spoken note here.",
-            }
+            },
+            {
+                "type": "content",
+                "title": "Too many stats",
+                "stats": [{"value": str(i), "label": "k"} for i in range(5)],
+                "notes": "Stats note.",
+            },
+            {
+                "type": "content",
+                "title": "Too many flow steps",
+                "flow": [{"label": str(i), "text": "step"} for i in range(6)],
+                "notes": "Flow note.",
+            },
         ],
     }
     deck.check(bad_spec, tmp_path)
     warnings = capsys.readouterr().out
+    assert "auto-numbers sections" in warnings
     assert "more than 3 columns" in warnings
     assert "missing image missing.png" in warnings
+    assert "more than 4 stats" in warnings
+    assert "more than 5 steps" in warnings
+
+    three_models = {
+        "title": "Three Models",
+        "slides": [
+            {
+                "type": "content",
+                "title": "Three columns fit",
+                "compare": [{"title": f"M{i}", "bullets": ["A", "B"]} for i in range(3)],
+                "notes": "Three models side by side.",
+            },
+            {
+                "type": "content",
+                "title": "Three cards fit cleanly",
+                "grid": [{"title": f"M{i}", "text": "Desc"} for i in range(3)],
+                "notes": "Three cards in one row.",
+            },
+        ],
+    }
+    assert len(deck.build(three_models, tmp_path).slides) == 3
 
     no_sections = {
         "title": "Demo",

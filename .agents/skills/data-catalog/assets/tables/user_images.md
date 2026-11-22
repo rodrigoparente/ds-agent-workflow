@@ -2,41 +2,42 @@
 
 **Description:** Media assets associated with user profiles and uploads.
 
-## PySpark Loading & Preprocessing Recipe
-Filters out soft-deleted or unapproved images, casts dimensions, and normalizes URLs.
+## Loading & Preprocessing Recipe
+Filters out soft-deleted or unapproved images, casts dimensions, and normalizes URLs:
 
-```python
-from pyspark.sql import functions as F
-
-# Filter deleted/unapproved media and normalize URLs & dimensions
-images_df = (
-    spark.read.table("lake.media.user_images")
-    .filter((F.col("is_deleted") == False) & (F.col("moderation_status") == "APPROVED"))
-    .withColumn("image_url", F.trim(F.col("image_url")))
-    .withColumn("width_px", F.col("width_px").cast("integer"))
-    .withColumn("height_px", F.col("height_px").cast("integer"))
-    .withColumn("is_primary", F.coalesce(F.col("is_primary"), F.lit(False)))
-    .withColumn("uploaded_at", F.to_timestamp(F.col("uploaded_at")))
-)
+```sql
+SELECT
+    image_id,
+    user_id,
+    TRIM(image_url) AS image_url,
+    image_type,
+    CAST(width_px AS INTEGER) AS width_px,
+    CAST(height_px AS INTEGER) AS height_px,
+    COALESCE(is_primary, FALSE) AS is_primary,
+    moderation_status,
+    is_deleted,
+    CAST(uploaded_at AS TIMESTAMP) AS uploaded_at
+FROM lake.media.user_images
+WHERE is_deleted = FALSE
+  AND moderation_status = 'APPROVED'
 ```
 
-## Schema (`printSchema()`)
-```
-root
- |-- image_id: string (nullable = false)
- |-- user_id: string (nullable = false)
- |-- image_url: string (nullable = true)
- |-- image_type: string (nullable = true)
- |-- width_px: integer (nullable = true)
- |-- height_px: integer (nullable = true)
- |-- is_primary: boolean (nullable = false)
- |-- moderation_status: string (nullable = true)
- |-- is_deleted: boolean (nullable = false)
- |-- uploaded_at: timestamp (nullable = true)
+## Schema
+```text
+- image_id: string (not null)
+- user_id: string (not null)
+- image_url: string (nullable)
+- image_type: string (nullable)
+- width_px: integer (nullable)
+- height_px: integer (nullable)
+- is_primary: boolean (not null)
+- moderation_status: string (nullable)
+- is_deleted: boolean (not null)
+- uploaded_at: timestamp (nullable)
 ```
 
-## Sample Content (`show(truncate=False)`)
-```
+## Sample Content
+```text
 +------------------------------------+------------------------------------+---------------------------------------------+----------+--------+---------+----------+-----------------+----------+-------------------+
 |image_id                            |user_id                             |image_url                                    |image_type|width_px|height_px|is_primary|moderation_status|is_deleted|uploaded_at        |
 +------------------------------------+------------------------------------+---------------------------------------------+----------+--------+---------+----------+-----------------+----------+-------------------+

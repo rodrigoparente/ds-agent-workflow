@@ -25,7 +25,7 @@
       "notes": "Let's start with why we ran this experiment in the first place."
     },
     {
-      "type": "compare",
+      "type": "content",
       "title": "Adding the product photo resolves ambiguity that titles miss",
       "compare": [
         {
@@ -57,7 +57,7 @@
       "notes": "Here is how the prototype works under the hood."
     },
     {
-      "type": "flow",
+      "type": "content",
       "title": "We embed the image and title, then train only a small classifier",
       "flow": [
         {"label": "Embed image", "text": "Frozen vision encoder maps photo to 512-d vector"},
@@ -74,7 +74,7 @@
       "notes": "Now let's look closely at the evaluation results on our 20,000-product held-out split."
     },
     {
-      "type": "callout",
+      "type": "content",
       "title": "Multimodal embeddings lift held-out accuracy by 8 points",
       "callout": {
         "value": "+8.0 pts",
@@ -89,7 +89,7 @@
       "notes": "Headline result first: overall accuracy jumps from 81.1% to 89.1% on a seller-grouped test split, which ensures the model isn't memorizing a single merchant's phrasing. Just as important, macro-F1 climbs by 9.4 points, confirming that medium and smaller categories benefit too. Latency stays at 38 milliseconds on CPU, comfortably inside our 50-millisecond serving SLA."
     },
     {
-      "type": "bars",
+      "type": "content",
       "title": "Multimodal model beats every single-modality alternative",
       "bars": [
         {"label": "Image + title (multimodal)", "value": 89.1, "display": "89.1%", "highlight": true},
@@ -101,7 +101,7 @@
       "notes": "To make sure the photo was truly adding orthogonal signal, we benchmarked four variants side by side. Neither modality wins alone: image-only reaches 76.4%, and even adding seller descriptions only gets text to 84.3%. Combining title and photo beats every single-modality baseline by nearly five points because visual cues resolve noun ambiguity while text resolves fine-grained product attributes."
     },
     {
-      "type": "table",
+      "type": "content",
       "title": "Short titles benefit the most from the product image",
       "table": [
         ["Title length", "Text only", "Image + text", "Gain"],
@@ -112,7 +112,7 @@
       "notes": "Breaking accuracy down by title length shows exactly where that eight-point average comes from. On short one-to-three-word listings, accuracy leaps by 18 percentage points—from 68% to 86%—because the photo supplies the context missing from the title. Once a title exceeds nine words, text already carries most of the signal, though the image still catches occasional seller typos."
     },
     {
-      "type": "grid",
+      "type": "content",
       "title": "Four known limitations and how we mitigate each before launch",
       "grid": [
         {
@@ -139,7 +139,7 @@
       "notes": "Before we ship anything, let's be candid about the four failure modes we observed in error analysis. About 11% of listings lack a valid photo at creation time, so the service falls back automatically to the text head. Visually generic packaging and rare categories under 50 samples remain weaker, which is why we want a shadow run before turning on auto-assignment."
     },
     {
-      "type": "timeline",
+      "type": "content",
       "title": "Three-phase rollout plan reduces production risk",
       "timeline": [
         {"phase": "Done", "title": "Offline validation", "text": "89.1% accuracy verified on 20k held-out split", "done": true},

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Build an executive blue-and-white deck from a JSON spec.
 
-Usage: .venv/bin/python .agents/skills/presentation/scripts/deck.py slides.json [out.pptx]
+Usage: uv run python .agents/skills/presentation/scripts/deck.py slides.json [out.pptx]
 
 The look lives here and nowhere else, so every deck looks the same.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -86,8 +87,8 @@ def chrome(s, deck_title, bar=True):
 
 
 # --- Evidence: the one thing that backs a slide's idea ---
-def bullets(s, items, x, y, w, size=28, space=18):
-    tf = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(BODY_H)).text_frame
+def bullets(s, items, x, y, w, size=28, space=18, h=BODY_H):
+    tf = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h)).text_frame
     tf.word_wrap = True
     tf.margin_left = 0
     for i, item in enumerate(items):
@@ -130,6 +131,8 @@ def images(s, items, x, y, w, h, base):
 
 
 def table(s, rows, x, y, w):
+    if not rows or not rows[0]:
+        return
     n_rows, n_cols = len(rows), len(rows[0])
     shape = s.shapes.add_table(
         n_rows, n_cols, Inches(x), Inches(y), Inches(w), Inches(0.7 * n_rows)
@@ -152,6 +155,8 @@ def table(s, rows, x, y, w):
 
 
 def flow(s, steps, x, y, w):
+    if not steps:
+        return
     gap = 0.15
     sw = (w - gap * (len(steps) - 1)) / len(steps)
     for i, step in enumerate(steps):
@@ -162,6 +167,8 @@ def flow(s, steps, x, y, w):
 
 
 def stats(s, items, x, y, w):
+    if not items:
+        return
     gap = 0.3
     cw = (w - gap * (len(items) - 1)) / len(items)
     has_delta = any(it.get("delta") for it in items)
@@ -182,6 +189,7 @@ def compare(s, cols, x, y, w):
         return
     gap = 0.35
     cw = (w - gap * (len(cols) - 1)) / len(cols)
+    title_sz, body_sz, space = (18, 16, 10) if len(cols) >= 3 else (20, 18, 12)
     for i, col in enumerate(cols):
         cx = x + i * (cw + gap)
         hdr_col = BLUE if col.get("highlight") else NAVY
@@ -189,10 +197,19 @@ def compare(s, cols, x, y, w):
         hdr_h = 0.95 if sub else 0.7
         box(s, cx, y, cw, BODY_H, PALE)
         box(s, cx, y, cw, hdr_h, hdr_col)
-        textbox(s, cx + 0.2, y + 0.1, cw - 0.4, 0.45, col["title"], 20, WHITE, True)
+        textbox(s, cx + 0.2, y + 0.1, cw - 0.4, 0.45, col["title"], title_sz, WHITE, True)
         if sub:
             textbox(s, cx + 0.2, y + 0.55, cw - 0.4, 0.35, sub, 14, LIGHT)
-        bullets(s, col.get("bullets", []), cx + 0.2, y + hdr_h + 0.2, cw - 0.4, size=18, space=12)
+        bullets(
+            s,
+            col.get("bullets", []),
+            cx + 0.2,
+            y + hdr_h + 0.2,
+            cw - 0.4,
+            size=body_sz,
+            space=space,
+            h=BODY_H - hdr_h - 0.3,
+        )
 
 
 def bars(s, items, x, y, w):
@@ -227,7 +244,7 @@ def callout(s, item, x, y, w):
         MSO_ANCHOR.MIDDLE,
     )
     textbox(s, x + 0.3, cy + 2.3, lw - 0.5, 1.4, item.get("label", ""), 18, TEXT, align=CENTER)
-    bullets(s, item.get("bullets", []), x + lw + 0.5, cy, w - lw - 0.5, size=22)
+    bullets(s, item.get("bullets", []), x + lw + 0.5, cy, w - lw - 0.5, size=22, h=lh)
 
 
 def timeline(s, steps, x, y, w):
@@ -251,7 +268,7 @@ def timeline(s, steps, x, y, w):
 def grid(s, cards, x, y, w):
     if not cards:
         return
-    cols = 2 if len(cards) <= 4 else 3
+    cols = len(cards) if len(cards) <= 3 else (2 if len(cards) == 4 else 3)
     rows = (len(cards) + cols - 1) // cols
     gx, gy = 0.3, 0.25
     cw, ch = (w - gx * (cols - 1)) / cols, (BODY_H - gy * (rows - 1)) / rows
@@ -298,7 +315,10 @@ def evidence(s, d, base):
 
 # --- Deck ---
 TITLES = {"tldr": "TL;DR", "conclusion": "Conclusion", "agenda": "Agenda"}
+SECTION_NUM_RE = re.compile(r"^(?:section\s*)?\d+[\.\)\-:\s]+", re.I)
 LIMITS = {
+    "stats": (4, "stats"),
+    "flow": (5, "steps"),
     "compare": (3, "columns"),
     "grid": (6, "cards"),
     "timeline": (5, "steps"),
@@ -315,6 +335,11 @@ def _check_image_paths(name, d, base):
 
 
 def _check_layout_limits(name, d, base):
+    if d.get("type") == "section" and SECTION_NUM_RE.match(d.get("title", "").strip()):
+        print(
+            f"WARNING {name}: section title starts with a number "
+            "(deck.py auto-numbers sections and agenda)"
+        )
     for key, (limit, unit) in LIMITS.items():
         if len(d.get(key, [])) > limit:
             print(f"WARNING {name}: more than {limit} {unit}")

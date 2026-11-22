@@ -12,7 +12,7 @@ A deck is a story the audience can follow without reading ahead. Build it from t
 | Results | What did we find? | Lead with the strongest finding |
 | Conclusion | So what? | What it means, and what comes next if the user wants it |
 
-Adapt section names and count to the story. Each section divider carries a one-line subtitle: the question that section answers. The TL;DR (right after the title) gives the whole story in 3-5 lines; the conclusion repeats it with the "so what".
+Adapt section names and count to the story. Each section divider carries a one-line subtitle: the question that section answers. **Never prefix section titles with numbers (`1.`, `01`, `Section 1:`)**—`deck.py` auto-numbers section dividers and the agenda. The TL;DR (right after the title) gives the whole story in 3-5 lines; the conclusion repeats it with the "so what".
 
 ## One idea per slide
 
@@ -36,7 +36,11 @@ Adapt section names and count to the story. Each section divider carries a one-l
 | `table` | Exact cross-cuts across a few rows and columns | Metrics broken down by segment or threshold |
 | `flow` | A 3-5 step pipeline, architecture, or modeling process | Data prep -> features -> split -> model -> serving |
 | `timeline` | 3-5 sequential iterations, milestones, or rollout phases | v1 baseline -> v2 features -> shadow test -> launch |
-| `grid` | 4 or 6 structured cards (`2x2` or `3x2`, optional `tag`) | Caveats & mitigations, error buckets, feature groups |
+| `grid` | 2, 3, 4, or 6 structured cards (`2x1`, `3x1`, `2x2`, `3x2`, optional `tag`) | 3 model families (`3x1`), caveats & mitigations (`2x2`) |
+
+**Layout selection guardrails:**
+- **Match slots to items:** Never cram 3 distinct models or techniques into a 2-column `compare`—use a 3-column `compare`, a 3-card `grid` (`3x1`), or 1 slide per technique when each needs explanation.
+- **Give datasets & concepts text context:** Use `image` + `bullets` (or a context/`stats` slide before the chart) when introducing a dataset, split, or unfamiliar concept; reserve bare `image` slides for self-explanatory charts whose takeaway is clear from the title alone.
 
 ## Presenter notes
 

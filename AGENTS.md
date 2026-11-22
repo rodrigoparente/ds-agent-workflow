@@ -1,5 +1,7 @@
 # Data Science Workflow & Agent Guidelines
 
+## Workflow
+
 Human-in-the-loop lifecycle: **Research (optional) → Spec → Code → Run (User) → Report → Presentation**. Skills live in `.agents/skills/` and trigger from natural prompts.
 
 - **Spec first (even on edits):** Start every initiative and follow-up change by updating `specs/<NN-name>.md` (`draft → approved → executed`) via `experiment-spec` before editing code. EDA, pipelines, and prototypes without formal metrics are first-class.
@@ -26,7 +28,7 @@ data/                         cached local datasets (<NN-name>.parquet, git-igno
 ```
 
 - **Naming:** Experiment initiatives use a two-digit kebab-case prefix (`01-sales-eda`, `02-baseline`) across `specs/`, `notebooks/`, `docs/reports/`, and `docs/figures/`. Standalone `docs/research/<name>.md` and `docs/presentations/<name>/` use user-chosen names.
-- **Notebooks:** Edit only `notebooks/py/<NN-name>.py` (`check_notebook.py` syncs `.ipynb`). Cell 1 lists third-party packages via `# # %pip install -q ...` (stays commented in `.ipynb` locally; recipients uncomment to run standalone).
+- **Notebooks:** Edit only `notebooks/py/<NN-name>.py` (`check_notebook.py` syncs `.ipynb`). Cell 1 lists third-party packages via `# # %pip install -q ...` (stays commented in `.ipynb` locally so it never conflicts with `uv`; standalone recipients uncomment it).
 
 ## Code Standards
 
@@ -38,16 +40,16 @@ data/                         cached local datasets (<NN-name>.parquet, git-igno
 
 ## Agent Boundaries
 
-- **You generate, the user runs.** Never run generated code in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Hand off with the exact command to run inside `.venv` (`jupyter lab`, `python scripts/<name>.py`, or `<app-command>`).
-- **Allowed commands:** Quick synthetic-data probes (`python3 -c`, a few seconds), `pytest`, `ruff`, `.agents/tools/*`, `.agents/skills/research/scripts/papers.py`, `.agents/skills/presentation/scripts/deck.py` (plus `soffice`/`pdftoppm` for slide previews), and read-only shell commands.
+- **You generate, the user runs.** Never run generated code in `notebooks/`, `scripts/`, or `apps/` unless explicitly asked. Hand off with the exact `uv` command (`uv run jupyter lab`, `uv run python scripts/<name>.py`, or `uv run <app-command>`, preceded by `uv sync` if dependencies changed).
+- **Allowed commands:** Quick synthetic-data probes (`python3 -c`, a few seconds), `uv run pytest`, `uv run ruff`, `.agents/tools/*`, `.agents/skills/research/scripts/papers.py`, `.agents/skills/presentation/scripts/deck.py` (plus `soffice`/`pdftoppm` for slide previews), and read-only shell commands.
 - **Never read** `data/` (consult `data-catalog` instead), `.env*`, or `~/.ssh`.
 - **Never open or edit `notebooks/*.ipynb`.** Edit `notebooks/py/<NN-name>.py` and inspect run outputs via `nb_summary.py`.
-- **Confirm first** before destructive or irreversible actions (`rm -rf`, `git push --force`, `git reset --hard`, `pip install/uninstall`) unless explicitly asked.
+- **Confirm first** before destructive or irreversible actions (`rm -rf`, `git push --force`, `git reset --hard`, `uv add/remove/sync`) unless explicitly asked.
 
 ## Helper Commands
 
 - **Check & sync notebook (no execution):** `python3 .agents/tools/check_notebook.py notebooks/py/<NN-name>.py`
 - **Read executed notebook outputs:** `python3 .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`
-- **Export report to `.docx`:** `.venv/bin/python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
-- **Build slide deck:** `.venv/bin/python .agents/skills/presentation/scripts/deck.py docs/presentations/<name>/slides.json`
+- **Export report to `.docx`:** `uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md`
+- **Build slide deck:** `uv run python .agents/skills/presentation/scripts/deck.py docs/presentations/<name>/slides.json`
 - **Search academic papers:** `python3 .agents/skills/research/scripts/papers.py search "query"`

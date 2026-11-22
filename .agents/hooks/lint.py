@@ -31,7 +31,7 @@ def check_edited_file(ctx: HookContext) -> str:
 
     fmt = run_project_tool(ctx.root, "ruff", "format", "--quiet", str(target))
     if fmt is None:
-        return f'ruff is not installed (run `pip install ".[dev]"` in .venv) while checking {rel}.'
+        return f"ruff is not installed (run `uv sync`) while checking {rel}."
     if fmt.returncode != 0:
         out = (fmt.stderr or fmt.stdout).strip()
         return f"ruff format failed in {rel}:\n{out}"
