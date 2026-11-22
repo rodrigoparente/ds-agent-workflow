@@ -370,21 +370,86 @@ def test_papers_xml_parsing(
     assert "arXiv:2401.00001v1" in out
 
 
-def test_deck_check_example_json_no_warnings(capsys: pytest.CaptureFixture[str]) -> None:
+def test_presentation_example_json_schema() -> None:
+    example_path = ROOT / ".agents" / "skills" / "presentation" / "assets" / "example.json"
+    spec = json.loads(example_path.read_text(encoding="utf-8"))
+    assert spec["title"]
+    assert spec.get("notes")
+    seen_types: set[str] = set()
+    for slide in spec["slides"]:
+        min_words = 6 if slide["type"] == "section" else 15
+        assert slide.get("notes") and len(slide["notes"].split()) >= min_words
+        for key in ("flow", "callout", "bars", "compare", "table", "grid", "timeline"):
+            if key in slide:
+                seen_types.add(key)
+    assert seen_types == {"flow", "callout", "bars", "compare", "table", "grid", "timeline"}
+
+
+def test_deck_check_example_json_no_warnings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     pytest.importorskip("pptx")
     import deck  # noqa: E402
 
     example_path = ROOT / ".agents" / "skills" / "presentation" / "assets" / "example.json"
     spec = json.loads(example_path.read_text(encoding="utf-8"))
-    deck.check(spec)
+    deck.check(spec, example_path.parent)
     assert capsys.readouterr().out == ""
+
+    prs = deck.build(spec, example_path.parent)
+    assert len(prs.slides) == len(spec["slides"]) + 1
+
+    bad_spec = {
+        "title": "Bad",
+        "slides": [
+            {
+                "type": "content",
+                "title": "Bad slide",
+                "image": "missing.png",
+                "compare": [{"title": str(i), "bullets": []} for i in range(4)],
+                "notes": "Spoken note here.",
+            }
+        ],
+    }
+    deck.check(bad_spec, tmp_path)
+    warnings = capsys.readouterr().out
+    assert "more than 3 columns" in warnings
+    assert "missing image missing.png" in warnings
 
     no_sections = {
         "title": "Demo",
         "slides": [{"type": "agenda", "notes": "Agenda without sections."}],
     }
-    prs = deck.build(no_sections, example_path.parent)
-    assert len(prs.slides) == 2
+    prs_no_sec = deck.build(no_sections, example_path.parent)
+    assert len(prs_no_sec.slides) == 2
+
+
+def test_check_notebook_flags_unsaved_plots() -> None:
+    unsaved_nb = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q matplotlib\n"
+        "# %%\nimport matplotlib.pyplot as plt\n"
+        "# %% [markdown]\n# ## Plot\n"
+        "# %%\nfig, ax = plt.subplots()\nax.plot([1, 2], [3, 4])\nplt.show()\n"
+    )
+    problems = check_notebook.problems_in(unsaved_nb, "notebooks/py/01-test.py")
+    assert any("without saving any figure" in p for p in problems)
+
+    saved_nb = unsaved_nb + 'fig.savefig(FIGURES / "01_plot.png", dpi=150, bbox_inches="tight")\n'
+    assert check_notebook.problems_in(saved_nb, "notebooks/py/01-test.py") == []
+
+    no_plot_nb = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q pandas\n"
+        "# %%\nimport pandas as pd\n"
+        "# %% [markdown]\n# ## Print\n"
+        "# %%\nprint(pd.__name__)\n"
+    )
+    assert check_notebook.problems_in(no_plot_nb, "notebooks/py/01-test.py") == []
+
+    skeleton_path = ROOT / ".agents" / "skills" / "write-code" / "assets" / "skeleton.py"
+    skeleton_problems = check_notebook.problems_in(skeleton_path.read_text(encoding="utf-8"))
+    assert not [p for p in skeleton_problems if "without saving any figure" in p]
 
 
 def test_check_notebook_flags_relative_project_paths() -> None:

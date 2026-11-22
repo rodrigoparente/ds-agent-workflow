@@ -47,6 +47,15 @@ REL_PATH_PREFIXES = (
     "../data",
     "../docs/figures",
 )
+PLOT_ROOTS = {"plt", "sns", "px"}
+PLOT_CALLS = {
+    "subplots",
+    "figure",
+    "ConfusionMatrixDisplay",
+    "RocCurveDisplay",
+    "PrecisionRecallDisplay",
+}
+DISPLAY_FNS = {"from_estimator", "from_predictions"}
 
 STRING = re.compile(r'("""|\'\'\').*?\1', re.S)  # long SQL lives in triple-quoted strings
 
@@ -285,6 +294,47 @@ def relative_path_problems(tree) -> list[str]:
     return out
 
 
+def _is_plot_call(node: ast.Call) -> bool:
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id in PLOT_CALLS
+    if not isinstance(func, ast.Attribute):
+        return False
+    if func.attr in PLOT_CALLS or func.attr == "plot":
+        return True
+    if func.attr in DISPLAY_FNS and isinstance(func.value, ast.Name):
+        return "Display" in func.value.id
+    if isinstance(func.value, ast.Name) and func.value.id in PLOT_ROOTS:
+        return func.attr not in {"show", "close", "tight_layout", "savefig"}
+    if isinstance(func.value, ast.Attribute) and func.value.attr == "plot":
+        return True
+    return False
+
+
+def _is_save_call(node: ast.Call) -> bool:
+    if isinstance(node.func, ast.Name):
+        return node.func.id == "savefig"
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr in {"savefig", "write_image"}
+    return False
+
+
+def unsaved_plot_problems(tree) -> list[str]:
+    """Flag notebooks that create plots without saving any figure to FIGURES."""
+    if tree is None:
+        return []
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
+    has_plot = any(_is_plot_call(c) for c in calls)
+    has_save = any(_is_save_call(c) for c in calls)
+    if has_plot and not has_save:
+        return [
+            "Notebook creates plot(s) without saving any figure. Save key charts to "
+            'FIGURES / f"{NAME}_<what>.png" (e.g. fig.savefig(..., dpi=150, bbox_inches="tight")) '
+            "before plt.show() so reports and presentations can reuse them."
+        ]
+    return []
+
+
 def problems_in(text, path=".", before_code_lines=None):
     try:
         tree = ast.parse(text)
@@ -299,6 +349,7 @@ def problems_in(text, path=".", before_code_lines=None):
         )
     out += structural_problems(tree)
     out += relative_path_problems(tree)
+    out += unsaved_plot_problems(tree)
     cells = parse_cells(collapse_strings(text))
     if not cells or cells[0][0] != "md":
         out.append("First cell must be markdown: title, overview/question, and spec link.")

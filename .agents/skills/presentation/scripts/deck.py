@@ -86,13 +86,13 @@ def chrome(s, deck_title, bar=True):
 
 
 # --- Evidence: the one thing that backs a slide's idea ---
-def bullets(s, items, x, y, w, size=28):
+def bullets(s, items, x, y, w, size=28, space=18):
     tf = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(BODY_H)).text_frame
     tf.word_wrap = True
     tf.margin_left = 0
     for i, item in enumerate(items):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.space_after = Pt(18)
+        p.space_after = Pt(space)
         r = p.add_run()
         r.text = item
         r.font.size, r.font.name = Pt(size), FONT
@@ -110,6 +110,23 @@ def image(s, path, x, y, w, h):
     pic.width, pic.height = int(pic.width * scale), int(pic.height * scale)
     pic.left = Inches(x) + (Inches(w) - pic.width) // 2
     pic.top = Inches(y) + (Inches(h) - pic.height) // 2
+
+
+def images(s, items, x, y, w, h, base):
+    if not items:
+        return
+    gap = 0.4
+    cw = (w - gap * (len(items) - 1)) / len(items)
+    img_h = h - 0.5
+    for i, item in enumerate(items):
+        if isinstance(item, str):
+            rel, cap = item, ""
+        else:
+            rel, cap = item["path"], item.get("caption", "")
+        cx = x + i * (cw + gap)
+        image(s, base / rel, cx, y, cw, img_h)
+        if cap:
+            textbox(s, cx, y + img_h + 0.08, cw, 0.4, cap, 14, MUTED, align=CENTER)
 
 
 def table(s, rows, x, y, w):
@@ -147,19 +164,122 @@ def flow(s, steps, x, y, w):
 def stats(s, items, x, y, w):
     gap = 0.3
     cw = (w - gap * (len(items) - 1)) / len(items)
+    has_delta = any(it.get("delta") for it in items)
+    val_y, val_h, lbl_y, lbl_h = (0.55, 1.25, 1.85, 0.85) if has_delta else (0.7, 1.4, 2.2, 1.2)
     for i, item in enumerate(items):
         cx = x + i * (cw + gap)
         box(s, cx, y + 0.3, cw, 3.2, PALE, MSO_SHAPE.ROUNDED_RECTANGLE).adjustments[0] = 0.08
-        textbox(s, cx, y + 0.7, cw, 1.4, item["value"], 54, BLUE, True, CENTER, MSO_ANCHOR.MIDDLE)
-        textbox(s, cx + 0.2, y + 2.2, cw - 0.4, 1.2, item["label"], 18, TEXT, align=CENTER)
+        textbox(
+            s, cx, y + val_y, cw, val_h, item["value"], 54, BLUE, True, CENTER, MSO_ANCHOR.MIDDLE
+        )
+        textbox(s, cx + 0.2, y + lbl_y, cw - 0.4, lbl_h, item["label"], 18, TEXT, align=CENTER)
+        if delta := item.get("delta"):
+            textbox(s, cx + 0.2, y + 2.75, cw - 0.4, 0.5, delta, 15, NAVY, True, CENTER)
+
+
+def compare(s, cols, x, y, w):
+    if not cols:
+        return
+    gap = 0.35
+    cw = (w - gap * (len(cols) - 1)) / len(cols)
+    for i, col in enumerate(cols):
+        cx = x + i * (cw + gap)
+        hdr_col = BLUE if col.get("highlight") else NAVY
+        sub = col.get("subtitle", "")
+        hdr_h = 0.95 if sub else 0.7
+        box(s, cx, y, cw, BODY_H, PALE)
+        box(s, cx, y, cw, hdr_h, hdr_col)
+        textbox(s, cx + 0.2, y + 0.1, cw - 0.4, 0.45, col["title"], 20, WHITE, True)
+        if sub:
+            textbox(s, cx + 0.2, y + 0.55, cw - 0.4, 0.35, sub, 14, LIGHT)
+        bullets(s, col.get("bullets", []), cx + 0.2, y + hdr_h + 0.2, cw - 0.4, size=18, space=12)
+
+
+def bars(s, items, x, y, w):
+    if not items:
+        return
+    step = min(0.75, BODY_H / len(items))
+    bh = min(0.42, step * 0.58)
+    label_w, val_w = 3.5, 1.6
+    track_x, track_w = x + label_w + 0.2, w - label_w - val_w - 0.4
+    max_val = max((abs(float(it["value"])) for it in items), default=1.0) or 1.0
+    for i, it in enumerate(items):
+        ry = y + i * step
+        hi = bool(it.get("highlight"))
+        lbl_c, bar_c, val_c = (NAVY, BLUE, BLUE) if hi else (TEXT, MID, MUTED)
+        textbox(
+            s, x, ry, label_w, bh, it["label"], 17, lbl_c, hi, PP_ALIGN.RIGHT, MSO_ANCHOR.MIDDLE
+        )
+        box(s, track_x, ry, track_w, bh, PALE)
+        bw = max(0.08, track_w * abs(float(it["value"])) / max_val)
+        box(s, track_x, ry, bw, bh, bar_c)
+        disp = it.get("display", str(it["value"]))
+        textbox(s, track_x + track_w + 0.2, ry, val_w, bh, disp, 17, val_c, hi, LEFT_)
+
+
+def callout(s, item, x, y, w):
+    lw, lh, cy = 4.3, 4.1, y + 0.15
+    box(s, x, cy, lw, lh, PALE, MSO_SHAPE.ROUNDED_RECTANGLE).adjustments[0] = 0.06
+    box(s, x, cy, 0.12, lh, BLUE)
+    v_size = 40 if len(item["value"]) > 7 else 54
+    textbox(
+        s, x + 0.2, cy + 0.65, lw - 0.3, 1.5, item["value"], v_size, BLUE, True, CENTER,
+        MSO_ANCHOR.MIDDLE,
+    )
+    textbox(s, x + 0.3, cy + 2.3, lw - 0.5, 1.4, item.get("label", ""), 18, TEXT, align=CENTER)
+    bullets(s, item.get("bullets", []), x + lw + 0.5, cy, w - lw - 0.5, size=22)
+
+
+def timeline(s, steps, x, y, w):
+    if not steps:
+        return
+    gap = 0.25
+    sw = (w - gap * (len(steps) - 1)) / len(steps)
+    if len(steps) > 1:
+        box(s, x + sw / 2, y + 1.12, w - sw, 0.06, LIGHT)
+    for i, step in enumerate(steps):
+        cx = x + i * (sw + gap)
+        if phase := step.get("phase"):
+            textbox(s, cx, y + 0.2, sw, 0.45, phase, 15, BLUE, True, CENTER)
+        fill, fg = (BLUE, WHITE) if step.get("done") else (LIGHT, NAVY)
+        node = box(s, cx + sw / 2 - 0.27, y + 0.88, 0.54, 0.54, fill, MSO_SHAPE.OVAL)
+        fill_text(node.text_frame, str(i + 1), 16, fg, True, CENTER)
+        textbox(s, cx, y + 1.6, sw, 0.5, step["title"], 19, NAVY, True, CENTER)
+        textbox(s, cx, y + 2.2, sw, 2.1, step.get("text", ""), 15, TEXT, align=CENTER)
+
+
+def grid(s, cards, x, y, w):
+    if not cards:
+        return
+    cols = 2 if len(cards) <= 4 else 3
+    rows = (len(cards) + cols - 1) // cols
+    gx, gy = 0.3, 0.25
+    cw, ch = (w - gx * (cols - 1)) / cols, (BODY_H - gy * (rows - 1)) / rows
+    for i, card in enumerate(cards):
+        r, c = divmod(i, cols)
+        cx, cy = x + c * (cw + gx), y + r * (ch + gy)
+        box(s, cx, cy, cw, ch, PALE, MSO_SHAPE.ROUNDED_RECTANGLE).adjustments[0] = 0.06
+        box(s, cx, cy, cw, 0.08, BLUE)
+        tag = card.get("tag", "")
+        title_w = cw - 1.5 if tag else cw - 0.4
+        textbox(s, cx + 0.2, cy + 0.2, title_w, 0.45, card["title"], 19, NAVY, True)
+        if tag:
+            textbox(s, cx + cw - 1.35, cy + 0.22, 1.15, 0.4, tag, 14, BLUE, True, PP_ALIGN.RIGHT)
+        textbox(s, cx + 0.2, cy + 0.72, cw - 0.4, ch - 0.85, card.get("text", ""), 15, TEXT)
 
 
 RENDERERS = {
     "image": lambda s, d, base: image(s, base / d["image"], LEFT, BODY_TOP, WIDTH, BODY_H),
+    "images": lambda s, d, base: images(s, d["images"], LEFT, BODY_TOP, WIDTH, BODY_H, base),
     "bullets": lambda s, d, _b: bullets(s, d["bullets"], LEFT, BODY_TOP, WIDTH),
     "table": lambda s, d, _b: table(s, d["table"], LEFT, BODY_TOP, WIDTH),
     "flow": lambda s, d, _b: flow(s, d["flow"], LEFT, BODY_TOP, WIDTH),
     "stats": lambda s, d, _b: stats(s, d["stats"], LEFT, BODY_TOP, WIDTH),
+    "compare": lambda s, d, _b: compare(s, d["compare"], LEFT, BODY_TOP, WIDTH),
+    "bars": lambda s, d, _b: bars(s, d["bars"], LEFT, BODY_TOP, WIDTH),
+    "callout": lambda s, d, _b: callout(s, d["callout"], LEFT, BODY_TOP, WIDTH),
+    "timeline": lambda s, d, _b: timeline(s, d["timeline"], LEFT, BODY_TOP, WIDTH),
+    "grid": lambda s, d, _b: grid(s, d["grid"], LEFT, BODY_TOP, WIDTH),
 }
 
 
@@ -178,9 +298,33 @@ def evidence(s, d, base):
 
 # --- Deck ---
 TITLES = {"tldr": "TL;DR", "conclusion": "Conclusion", "agenda": "Agenda"}
+LIMITS = {
+    "compare": (3, "columns"),
+    "grid": (6, "cards"),
+    "timeline": (5, "steps"),
+    "bars": (8, "bars"),
+}
 
 
-def check(spec):
+def _check_image_paths(name, d, base):
+    paths = [d["image"]] if "image" in d else []
+    paths += [it if isinstance(it, str) else it["path"] for it in d.get("images", [])]
+    for rel in paths:
+        if not (base / rel).exists():
+            print(f"WARNING {name}: missing image {rel}")
+
+
+def _check_layout_limits(name, d, base):
+    for key, (limit, unit) in LIMITS.items():
+        if len(d.get(key, [])) > limit:
+            print(f"WARNING {name}: more than {limit} {unit}")
+    if "images" in d and not (1 <= len(d["images"]) <= 2):
+        print(f"WARNING {name}: images supports 1 or 2 figures")
+    if base is not None:
+        _check_image_paths(name, d, base)
+
+
+def check(spec, base=None):
     """Warn when a slide drifts from the rules: one idea, one piece of evidence, notes."""
     for n, d in enumerate(spec["slides"], 2):
         name = f"slide {n} ({d.get('title') or d['type']})"
@@ -190,9 +334,10 @@ def check(spec):
             print(f"WARNING {name}: title is long")
         if len(d.get("bullets", [])) > 5:
             print(f"WARNING {name}: more than 5 bullets")
-        kinds = {k for k in ("image", "bullets", "table", "flow", "stats") if k in d}
+        kinds = {k for k in RENDERERS if k in d}
         if len(kinds) > 1 and kinds != {"image", "bullets"}:
             print(f"WARNING {name}: more than one kind of evidence {sorted(kinds)}")
+        _check_layout_limits(name, d, base)
 
 
 def _add_title_slide(prs, spec):
@@ -265,6 +410,6 @@ if __name__ == "__main__":
         else spec_path.with_name(spec_path.parent.name + ".pptx")
     )
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
-    check(spec)
+    check(spec, spec_path.parent)
     build(spec, spec_path.parent).save(out)
     print(f"Saved {out}")
