@@ -39,7 +39,7 @@
       "Read(notebooks/*.ipynb)",
       "Read(./notebooks/*.ipynb)",
       "Edit(notebooks/*.ipynb)",
-      "Write(notebooks/*.ipynb)",
+      "Edit(./notebooks/*.ipynb)",
       "Bash(rm -rf *)",
       "Bash(git push --force *)",
       "Bash(git reset --hard *)"

@@ -26,7 +26,7 @@
     },
     {
       "type": "content",
-      "title": "Adding the product photo resolves ambiguity that titles miss",
+      "title": "Baseline vs. Multimodal Classifier",
       "compare": [
         {
           "title": "Text-only baseline",
@@ -58,7 +58,7 @@
     },
     {
       "type": "content",
-      "title": "We embed the image and title, then train only a small classifier",
+      "title": "Multimodal Embedding Pipeline",
       "flow": [
         {"label": "Embed image", "text": "Frozen vision encoder maps photo to 512-d vector"},
         {"label": "Embed title", "text": "Frozen text encoder maps title to 384-d vector"},
@@ -68,6 +68,27 @@
       "notes": "A key design choice here was keeping both upstream encoders frozen. Rather than fine-tuning a large multimodal transformer—which would require GPUs in serving and weeks of retraining—we precompute normalized image and text vectors and train a simple regularized linear layer on top. That keeps training under ten minutes on a single machine and lets us reuse cached embeddings across experiments."
     },
     {
+      "type": "content",
+      "title": "Handling Missing Product Photos",
+      "code": [
+        {
+          "title": "Bug: zero-vector leaks into head",
+          "tone": "bug",
+          "start_line": 18,
+          "highlight": [20, 21],
+          "snippet": "def predict(title, image_vec):\n    txt = encode_text(title)\n    if image_vec is None:\n        image_vec = np.zeros(512)\n    x = np.concatenate([txt, image_vec])\n    return multimodal_head.predict(x)"
+        },
+        {
+          "title": "Fix: route to text-only fallback",
+          "tone": "fix",
+          "start_line": 18,
+          "highlight": [20, 21],
+          "snippet": "def predict(title, image_vec):\n    txt = encode_text(title)\n    if image_vec is None:\n        return text_head.predict(txt)\n    x = np.concatenate([txt, image_vec])\n    return multimodal_head.predict(x)"
+        }
+      ],
+      "notes": "One subtle bug we caught during shadow testing was how missing photos were handled. Originally, passing an all-zero image vector shifted the multimodal classifier's decision boundary and cost six points of accuracy on photo-less listings. Routing those requests directly to the calibrated text-only head eliminates the distortion cleanly."
+    },
+    {
       "type": "section",
       "title": "Results & Trade-offs",
       "subtitle": "How much better is it, and where does it still fail?",
@@ -75,7 +96,7 @@
     },
     {
       "type": "content",
-      "title": "Multimodal embeddings lift held-out accuracy by 8 points",
+      "title": "Headline Held-Out Performance",
       "callout": {
         "value": "+8.0 pts",
         "label": "accuracy gain over text-only baseline (89.1% vs. 81.1%)",
@@ -90,7 +111,7 @@
     },
     {
       "type": "content",
-      "title": "Multimodal model beats every single-modality alternative",
+      "title": "Single-Modality vs. Multimodal Benchmark",
       "bars": [
         {"label": "Image + title (multimodal)", "value": 89.1, "display": "89.1%", "highlight": true},
         {"label": "Title + description (text)", "value": 84.3, "display": "84.3%"},
@@ -102,7 +123,7 @@
     },
     {
       "type": "content",
-      "title": "Short titles benefit the most from the product image",
+      "title": "Accuracy by Title Length",
       "table": [
         ["Title length", "Text only", "Image + text", "Gain"],
         ["1-3 words", "68%", "86%", "+18 pts"],
@@ -113,7 +134,7 @@
     },
     {
       "type": "content",
-      "title": "Four known limitations and how we mitigate each before launch",
+      "title": "Known Limitations & Mitigations",
       "grid": [
         {
           "title": "Missing or placeholder photos",
@@ -140,7 +161,7 @@
     },
     {
       "type": "content",
-      "title": "Three-phase rollout plan reduces production risk",
+      "title": "Staged Rollout Plan",
       "timeline": [
         {"phase": "Done", "title": "Offline validation", "text": "89.1% accuracy verified on 20k held-out split", "done": true},
         {"phase": "Weeks 1-2", "title": "10% shadow test", "text": "Log predictions & p95 latency with zero user impact"},
@@ -157,6 +178,12 @@
         "Decision needed: approve 2-week 10% shadow deployment starting Monday"
       ],
       "notes": "To wrap up: adding the product photo solves our single biggest blind spot—short seller titles—while keeping serving complexity low and latency under budget. All risks around missing images and packaged goods are bounded by a fallback path. What I need from you today is a green light to start the two-week 10% shadow test on Monday."
+    },
+    {
+      "type": "thanks",
+      "title": "Thank you",
+      "subtitle": "Questions & discussion",
+      "notes": "Thank you for your time. I would love to hear your questions on the evaluation setup, the fallback behavior, or the shadow rollout timeline."
     }
   ]
 }

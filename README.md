@@ -18,6 +18,11 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 
 ## Starting a New Project from This Template
 
+**Prerequisite:** Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it yet (no pre-installed Python needed):
+
+- **macOS / Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv`)
+- **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
 ```bash
 # 1. Clone into your new project folder with a fresh Git history
 git clone <template-repo-url> my-ds-project && cd my-ds-project

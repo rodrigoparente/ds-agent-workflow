@@ -25,6 +25,22 @@ NAVY, BLUE, MID, LIGHT, PALE, TEXT, MUTED, WHITE = (
     for c in ("0A2540", "1F5FBF", "5B9BD5", "DCEBFA", "F2F7FD", "1F2937", "64748B", "FFFFFF")
 )
 FONT = "Calibri"
+CODE_FONT = "Consolas"
+CODE_HDR = RGBColor.from_string("133252")
+CODE_FG = RGBColor.from_string("F1F5F9")
+CODE_TONES = {
+    "info": (BLUE, RGBColor.from_string("1B3F72"), RGBColor.from_string("7CC4FA")),
+    "bug": (
+        RGBColor.from_string("E05263"),
+        RGBColor.from_string("4A1D28"),
+        RGBColor.from_string("FCA5A5"),
+    ),
+    "fix": (
+        RGBColor.from_string("22A06B"),
+        RGBColor.from_string("123D32"),
+        RGBColor.from_string("6EE7B7"),
+    ),
+}
 W, H = 13.333, 7.5  # 16:9, inches
 LEFT, WIDTH = 0.7, 11.93  # content margins
 BODY_TOP, BODY_H = 1.95, 4.45  # content area below the title
@@ -32,13 +48,15 @@ LEFT_, CENTER = PP_ALIGN.LEFT, PP_ALIGN.CENTER
 
 
 # --- Building blocks ---
-def fill_text(tf, value, size, color=TEXT, bold=False, align=LEFT_):
+def fill_text(tf, value, size, color=TEXT, bold=False, align=LEFT_, font=FONT):
     tf.word_wrap = True
     p = tf.paragraphs[0]
     p.alignment = align
     r = p.add_run()
     r.text = value
-    r.font.size, r.font.bold, r.font.name = Pt(size), bold, FONT
+    if font == CODE_FONT or value != value.strip():
+        r._r.t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    r.font.size, r.font.bold, r.font.name = Pt(size), bold, font
     r.font.color.rgb = color
 
 
@@ -70,11 +88,10 @@ def new_slide(prs, title, x=LEFT, y=0.55, w=WIDTH, h=1.2, size=30, anchor=None):
     return s
 
 
-def chrome(s, deck_title, bar=True):
-    """Accent bar above the title, deck name bottom-left, live slide number bottom-right."""
+def chrome(s, bar=True):
+    """Accent bar above the title and live slide number bottom-right."""
     if bar:
         box(s, LEFT, 0.38, 0.9, 0.07, BLUE)
-    textbox(s, LEFT, 7.0, 8, 0.3, deck_title, 11, MUTED)
     p = textbox(
         s, W - 1.7, 7.0, 1.0, 0.3, "", 11, MUTED, align=PP_ALIGN.RIGHT
     ).text_frame.paragraphs[0]
@@ -285,6 +302,82 @@ def grid(s, cards, x, y, w):
         textbox(s, cx + 0.2, cy + 0.72, cw - 0.4, ch - 0.85, card.get("text", ""), 15, TEXT)
 
 
+def _code_lines(block):
+    if "lines" in block:
+        return [str(ln) for ln in block["lines"]]
+    return str(block.get("snippet", "")).splitlines()
+
+
+def _clear_cell_borders(cell):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    for tag in ("a:lnL", "a:lnR", "a:lnT", "a:lnB"):
+        ln = etree.SubElement(tc_pr, qn(tag), w="0")
+        etree.SubElement(ln, qn("a:noFill"))
+
+
+def _code_cell(cell, value, size, color, bg, bold, align):
+    # Borders (<a:ln*>) must precede <a:solidFill> in <a:tcPr> per OOXML schema
+    _clear_cell_borders(cell)
+    cell.fill.solid()
+    cell.fill.fore_color.rgb = bg
+    cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+    cell.margin_left = cell.margin_right = Inches(0.08)
+    cell.margin_top = cell.margin_bottom = Pt(1.5)
+    fill_text(cell.text_frame, value, size, color, bold, align, font=CODE_FONT)
+
+
+def _code_block(s, block, x, y, w, h, compact=False):
+    lines = _code_lines(block)
+    if not lines:
+        return
+    accent, hi_bg, hi_num = CODE_TONES.get(block.get("tone", "info"), CODE_TONES["info"])
+    box(s, x, y, w, h, NAVY)
+    box(s, x, y, w, 0.06, accent)
+    if title := block.get("title", ""):
+        hdr_h = 0.48
+        box(s, x, y + 0.06, w, hdr_h - 0.06, CODE_HDR)
+        textbox(s, x + 0.2, y + 0.11, w - 0.4, 0.34, title, 14, LIGHT, True)
+    else:
+        hdr_h = 0.12
+
+    tx, ty, tw, avail_h = x + 0.12, y + hdr_h + 0.1, w - 0.24, h - hdr_h - 0.2
+    row_h = min(0.32, avail_h / len(lines))
+    font_sz = 11 if compact or len(lines) > 10 else 13
+    t = s.shapes.add_table(
+        len(lines), 2, Inches(tx), Inches(ty), Inches(tw), Inches(row_h * len(lines))
+    ).table
+    t.first_row = t.horz_banding = t.vert_banding = False
+    tbl_pr = t._tbl.tblPr
+    if (style_id := tbl_pr.find(qn("a:tableStyleId"))) is not None:
+        tbl_pr.remove(style_id)
+    num_w = 0.55
+    t.columns[0].width, t.columns[1].width = Inches(num_w), Inches(tw - num_w)
+
+    start = int(block.get("start_line", 1))
+    highlights = set(block.get("highlight", []))
+    for i, line in enumerate(lines):
+        line_no = start + i
+        is_hi = line_no in highlights
+        bg = hi_bg if is_hi else NAVY
+        t.rows[i].height = Inches(row_h)
+        num_fg = hi_num if is_hi else MUTED
+        _code_cell(t.cell(i, 0), str(line_no), font_sz, num_fg, bg, is_hi, PP_ALIGN.RIGHT)
+        _code_cell(
+            t.cell(i, 1), line or " ", font_sz, WHITE if is_hi else CODE_FG, bg, is_hi, LEFT_
+        )
+
+
+def code(s, spec_code, x, y, w, compact=False):
+    blocks = spec_code if isinstance(spec_code, list) else [spec_code]
+    if not blocks:
+        return
+    gap = 0.35
+    cw = (w - gap * (len(blocks) - 1)) / len(blocks)
+    is_compact = compact or len(blocks) > 1
+    for i, block in enumerate(blocks):
+        _code_block(s, block, x + i * (cw + gap), y, cw, BODY_H, compact=is_compact)
+
+
 RENDERERS = {
     "image": lambda s, d, base: image(s, base / d["image"], LEFT, BODY_TOP, WIDTH, BODY_H),
     "images": lambda s, d, base: images(s, d["images"], LEFT, BODY_TOP, WIDTH, BODY_H, base),
@@ -297,6 +390,7 @@ RENDERERS = {
     "callout": lambda s, d, _b: callout(s, d["callout"], LEFT, BODY_TOP, WIDTH),
     "timeline": lambda s, d, _b: timeline(s, d["timeline"], LEFT, BODY_TOP, WIDTH),
     "grid": lambda s, d, _b: grid(s, d["grid"], LEFT, BODY_TOP, WIDTH),
+    "code": lambda s, d, _b: code(s, d["code"], LEFT, BODY_TOP, WIDTH),
 }
 
 
@@ -304,6 +398,9 @@ def evidence(s, d, base):
     if "image" in d and "bullets" in d:
         bullets(s, d["bullets"], LEFT, BODY_TOP, 5.2, 22)
         image(s, base / d["image"], LEFT + 5.6, BODY_TOP, WIDTH - 5.6, BODY_H)
+    elif "code" in d and "bullets" in d:
+        code(s, d["code"], LEFT, BODY_TOP, 7.1, compact=True)
+        bullets(s, d["bullets"], LEFT + 7.5, BODY_TOP, WIDTH - 7.5, size=20, space=14)
     else:
         for key, fn in RENDERERS.items():
             if key in d:
@@ -314,8 +411,9 @@ def evidence(s, d, base):
 
 
 # --- Deck ---
-TITLES = {"tldr": "TL;DR", "conclusion": "Conclusion", "agenda": "Agenda"}
+TITLES = {"tldr": "TL;DR", "conclusion": "Conclusion", "agenda": "Agenda", "thanks": "Thank you"}
 SECTION_NUM_RE = re.compile(r"^(?:section\s*)?\d+[\.\)\-:\s]+", re.I)
+ALLOWED_COMBOS = ({"image", "bullets"}, {"code", "bullets"})
 LIMITS = {
     "stats": (4, "stats"),
     "flow": (5, "steps"),
@@ -334,6 +432,20 @@ def _check_image_paths(name, d, base):
             print(f"WARNING {name}: missing image {rel}")
 
 
+def _check_code(name, d):
+    raw = d["code"]
+    blocks = raw if isinstance(raw, list) else [raw]
+    if isinstance(raw, list) and not (1 <= len(raw) <= 2):
+        print(f"WARNING {name}: code supports 1 or 2 blocks")
+    if "bullets" in d and len(blocks) > 1:
+        print(f"WARNING {name}: combine bullets with a single code block only")
+    for block in blocks:
+        if len(_code_lines(block)) > 14:
+            print(f"WARNING {name}: code block has more than 14 lines")
+        if (tone := block.get("tone")) and tone not in CODE_TONES:
+            print(f"WARNING {name}: unknown code tone {tone!r}")
+
+
 def _check_layout_limits(name, d, base):
     if d.get("type") == "section" and SECTION_NUM_RE.match(d.get("title", "").strip()):
         print(
@@ -345,6 +457,8 @@ def _check_layout_limits(name, d, base):
             print(f"WARNING {name}: more than {limit} {unit}")
     if "images" in d and not (1 <= len(d["images"]) <= 2):
         print(f"WARNING {name}: images supports 1 or 2 figures")
+    if "code" in d:
+        _check_code(name, d)
     if base is not None:
         _check_image_paths(name, d, base)
 
@@ -355,14 +469,19 @@ def check(spec, base=None):
         name = f"slide {n} ({d.get('title') or d['type']})"
         if not d.get("notes"):
             print(f"WARNING {name}: no presenter notes")
-        if len(d.get("title", "")) > 100:
+        if len(d.get("title", "")) > 80:
             print(f"WARNING {name}: title is long")
         if len(d.get("bullets", [])) > 5:
             print(f"WARNING {name}: more than 5 bullets")
         kinds = {k for k in RENDERERS if k in d}
-        if len(kinds) > 1 and kinds != {"image", "bullets"}:
+        if len(kinds) > 1 and kinds not in ALLOWED_COMBOS:
             print(f"WARNING {name}: more than one kind of evidence {sorted(kinds)}")
         _check_layout_limits(name, d, base)
+
+
+def _add_stripes(s):
+    for x, color in ((9.2, LIGHT), (10.5, MID), (11.8, BLUE)):
+        box(s, x, 0, W - x, H, color)
 
 
 def _add_title_slide(prs, spec):
@@ -372,41 +491,51 @@ def _add_title_slide(prs, spec):
     textbox(s, 0.9, 5.6, 7.4, 0.5, meta, 16, MUTED)
     if spec.get("notes"):
         s.notes_slide.notes_text_frame.text = spec["notes"]
-    for x, color in ((9.2, LIGHT), (10.5, MID), (11.8, BLUE)):
-        box(s, x, 0, W - x, H, color)
+    _add_stripes(s)
 
 
-def _add_section_slide(prs, d, deck, count):
+def _add_section_slide(prs, d, count):
     s = new_slide(prs, d["title"], 5.4, 2.4, 7.2, 1.4, 38, MSO_ANCHOR.BOTTOM)
     box(s, 0, 0, 4.6, H, LIGHT)
     textbox(s, 0.6, 2.6, 3.4, 2.2, f"{count:02d}", 96, BLUE, True, CENTER, MSO_ANCHOR.MIDDLE)
     textbox(s, 5.4, 3.95, 7.0, 1.0, d.get("subtitle", ""), 20, MUTED)
-    chrome(s, deck, bar=False)
+    chrome(s, bar=False)
     return s
 
 
-def _add_agenda_slide(prs, d, deck, sections):
+def _add_agenda_slide(prs, d, sections):
     s = new_slide(prs, d.get("title", TITLES["agenda"]))
     if sections:
         step = min(0.8, BODY_H / len(sections))
         for i, name in enumerate(sections):
             textbox(s, LEFT, BODY_TOP + i * step, 1.0, step, f"{i + 1:02d}", 28, BLUE, True)
             textbox(s, LEFT + 1.2, BODY_TOP + i * step, 10, step, name, 26, NAVY)
-    chrome(s, deck)
+    chrome(s)
     return s
 
 
-def _add_content_slide(prs, d, deck, base):
+def _add_content_slide(prs, d, base):
     s = new_slide(prs, d.get("title", TITLES.get(d["type"], "")))
     evidence(s, d, base)
-    chrome(s, deck)
+    chrome(s)
+    return s
+
+
+def _add_thanks_slide(prs, d, spec):
+    s = new_slide(prs, d.get("title", TITLES["thanks"]), 0.9, 2.55, 7.4, 1.1, 48, MSO_ANCHOR.TOP)
+    box(s, 0.9, 2.3, 1.1, 0.08, BLUE)
+    if sub := d.get("subtitle"):
+        textbox(s, 0.9, 3.85, 7.4, 1.0, sub, 22, BLUE)
+    meta = d.get("contact") or " · ".join(filter(None, [spec.get("author"), spec.get("date")]))
+    if meta:
+        textbox(s, 0.9, 5.2, 7.4, 0.5, meta, 16, MUTED)
+    _add_stripes(s)
     return s
 
 
 def build(spec, base):
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(W), Inches(H)
-    deck = spec["title"]
     _add_title_slide(prs, spec)
 
     sections = [d["title"] for d in spec["slides"] if d["type"] == "section"]
@@ -415,11 +544,13 @@ def build(spec, base):
         kind = d["type"]
         if kind == "section":
             count += 1
-            s = _add_section_slide(prs, d, deck, count)
+            s = _add_section_slide(prs, d, count)
         elif kind == "agenda":
-            s = _add_agenda_slide(prs, d, deck, sections)
+            s = _add_agenda_slide(prs, d, sections)
+        elif kind == "thanks":
+            s = _add_thanks_slide(prs, d, spec)
         else:
-            s = _add_content_slide(prs, d, deck, base)
+            s = _add_content_slide(prs, d, base)
         if d.get("notes"):
             s.notes_slide.notes_text_frame.text = d["notes"]
     return prs

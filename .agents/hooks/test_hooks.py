@@ -388,14 +388,24 @@ def test_presentation_example_json_schema() -> None:
     spec = json.loads(example_path.read_text(encoding="utf-8"))
     assert spec["title"]
     assert spec.get("notes")
+    assert spec["slides"][-1]["type"] == "thanks"
     seen_types: set[str] = set()
     for slide in spec["slides"]:
         min_words = 6 if slide["type"] == "section" else 15
         assert slide.get("notes") and len(slide["notes"].split()) >= min_words
-        for key in ("flow", "callout", "bars", "compare", "table", "grid", "timeline"):
+        for key in ("flow", "callout", "bars", "compare", "table", "grid", "timeline", "code"):
             if key in slide:
                 seen_types.add(key)
-    assert seen_types == {"flow", "callout", "bars", "compare", "table", "grid", "timeline"}
+    assert seen_types == {
+        "flow",
+        "callout",
+        "bars",
+        "compare",
+        "table",
+        "grid",
+        "timeline",
+        "code",
+    }
 
 
 def test_deck_check_example_json_no_warnings(
@@ -411,6 +421,10 @@ def test_deck_check_example_json_no_warnings(
 
     prs = deck.build(spec, example_path.parent)
     assert len(prs.slides) == len(spec["slides"]) + 1
+    # Deck title appears on slide 1 only, not repeated in slide footers
+    for slide in list(prs.slides)[1:]:
+        texts = [sh.text_frame.text for sh in slide.shapes if sh.has_text_frame]
+        assert spec["title"] not in texts
 
     bad_spec = {
         "title": "Bad",
@@ -474,6 +488,110 @@ def test_deck_check_example_json_no_warnings(
     }
     prs_no_sec = deck.build(no_sections, example_path.parent)
     assert len(prs_no_sec.slides) == 2
+
+
+def test_deck_code_thanks_and_validation(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pytest.importorskip("pptx")
+    import deck  # noqa: E402
+    from pptx.oxml.ns import qn  # noqa: E402
+
+    valid_spec = {
+        "title": "Code & Thanks Demo",
+        "author": "Ana",
+        "date": "Nov 2026",
+        "slides": [
+            {
+                "type": "content",
+                "title": "Indented Snippet",
+                "code": {
+                    "title": "helper.py",
+                    "tone": "info",
+                    "start_line": 10,
+                    "highlight": [11],
+                    "snippet": "def f():\n    return 1",
+                },
+                "notes": "Single code block with indentation.",
+            },
+            {
+                "type": "content",
+                "title": "Code With Takeaways",
+                "code": {"lines": ["x = 1", "y = x + 2"], "tone": "fix"},
+                "bullets": ["Clean assignment", "Zero side effects"],
+                "notes": "Code paired with concise bullets.",
+            },
+            {
+                "type": "thanks",
+                "notes": "Default English thank-you slide.",
+            },
+            {
+                "type": "thanks",
+                "title": "Obrigado",
+                "subtitle": "Dúvidas?",
+                "contact": "ana@example.com",
+                "notes": "Localized thank-you slide.",
+            },
+        ],
+    }
+    deck.check(valid_spec, tmp_path)
+    assert capsys.readouterr().out == ""
+
+    prs = deck.build(valid_spec, tmp_path)
+    assert len(prs.slides) == 5
+
+    # Verify OOXML <a:tcPr> order (borders before solidFill) and preserved indentation
+    code_tbl = next(sh.table for sh in prs.slides[1].shapes if sh.has_table)
+    tc_pr = code_tbl.cell(1, 1)._tc.tcPr
+    tags = [el.tag for el in tc_pr]
+    assert tags.index(qn("a:lnB")) < tags.index(qn("a:solidFill"))
+    t_el = code_tbl.cell(1, 1).text_frame.paragraphs[0].runs[0]._r.t
+    assert t_el.get("{http://www.w3.org/XML/1998/namespace}space") == "preserve"
+    assert t_el.text == "    return 1"
+
+    # Verify default and custom thanks slides have no slide-number field
+    for idx, expected_title in ((3, "Thank you"), (4, "Obrigado")):
+        thanks_slide = prs.slides[idx]
+        assert thanks_slide.shapes.title.text == expected_title
+        assert not any(
+            sh.has_text_frame and sh.text_frame._txBody.findall(f".//{qn('a:fld')}")
+            for sh in thanks_slide.shapes
+        )
+
+    invalid_spec = {
+        "title": "Invalid Code",
+        "slides": [
+            {
+                "type": "content",
+                "title": "A" * 85,
+                "code": [{"snippet": "a"} for _ in range(3)],
+                "bullets": ["Not allowed with 3 blocks"],
+                "notes": "Too many blocks.",
+            },
+            {
+                "type": "content",
+                "title": "Too long & bad tone",
+                "code": {"lines": [str(i) for i in range(15)], "tone": "warn"},
+                "notes": "Too many lines.",
+            },
+        ],
+    }
+    deck.check(invalid_spec, tmp_path)
+    warnings = capsys.readouterr().out
+    assert "title is long" in warnings
+    assert "code supports 1 or 2 blocks" in warnings
+    assert "combine bullets with a single code block only" in warnings
+    assert "code block has more than 14 lines" in warnings
+    assert "unknown code tone 'warn'" in warnings
+
+
+def test_claude_settings_has_no_write_deny_rules() -> None:
+    settings_path = ROOT / ".claude" / "settings.json"
+    data = json.loads(settings_path.read_text(encoding="utf-8"))
+    deny_rules = data["permissions"]["deny"]
+    assert not any(rule.startswith("Write(") for rule in deny_rules)
+    assert "Edit(notebooks/*.ipynb)" in deny_rules
+    assert "Edit(./notebooks/*.ipynb)" in deny_rules
 
 
 def test_check_notebook_flags_unsaved_plots() -> None:
