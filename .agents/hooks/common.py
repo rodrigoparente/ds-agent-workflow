@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared lifecycle hook helpers for Antigravity, Claude Code, and Cursor."""
+"""Shared lifecycle hook helpers for Antigravity and Claude Code (plus Cursor via .claude/)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from typing import Any
 
 @dataclass
 class HookContext:
-    agent: str  # "antigravity" | "claude" | "cursor"
+    agent: str  # "antigravity" | "claude"
     root: Path
     file_path: str = ""
     stop_active: bool = False
@@ -69,47 +69,40 @@ def find_project_tool(root: Path, tool: str) -> str | None:
     return shutil.which(tool)
 
 
+def _extract_path(mapping: Any, *keys: str) -> str:
+    if not isinstance(mapping, dict):
+        return ""
+    for key in keys:
+        if val := mapping.get(key):
+            return str(val)
+    return ""
+
+
 def parse_payload(stream: Any = None) -> HookContext:
     """Parse stdin JSON into a normalized HookContext."""
-    raw_text = (stream or sys.stdin).read()
+    raw_text = (sys.stdin if stream is None else stream).read().strip()
     try:
-        data = json.loads(raw_text) if raw_text.strip() else {}
+        data = json.loads(raw_text) if raw_text else {}
     except json.JSONDecodeError:
         data = {}
 
     root = _detect_root(data)
-    termination_reason = ""
-
-    if "toolCall" in data or "workspacePaths" in data or "continuationActive" in data:
-        agent = "antigravity"
-        args = (data.get("toolCall") or {}).get("args") or {}
-        path = (
-            args.get("Path")
-            or args.get("TargetFile")
-            or args.get("file_path")
-            or args.get("notebook_path")
-            or ""
+    if any(k in data for k in ("toolCall", "workspacePaths", "continuationActive")):
+        tool_call = data.get("toolCall")
+        args = tool_call.get("args") if isinstance(tool_call, dict) else None
+        return HookContext(
+            agent="antigravity",
+            root=root,
+            file_path=_extract_path(args, "Path", "TargetFile"),
+            stop_active=bool(data.get("continuationActive", False)),
+            termination_reason=str(data.get("terminationReason", "")),
         )
-        stop_active = bool(data.get("continuationActive", False))
-        termination_reason = str(data.get("terminationReason") or "")
-    elif "loop_count" in data or (
-        "tool_input" not in data and ("file_path" in data or "file" in data)
-    ):
-        agent = "cursor"
-        path = data.get("file_path") or data.get("file") or data.get("path") or ""
-        stop_active = int(data.get("loop_count", 0) or 0) > 0
-    else:
-        agent = "claude"
-        ti = data.get("tool_input") or {}
-        path = ti.get("file_path") or ti.get("notebook_path") or ti.get("path") or ""
-        stop_active = bool(data.get("stop_hook_active", False))
 
     return HookContext(
-        agent=agent,
+        agent="claude",
         root=root,
-        file_path=path,
-        stop_active=stop_active,
-        termination_reason=termination_reason,
+        file_path=_extract_path(data.get("tool_input"), "file_path", "notebook_path", "path"),
+        stop_active=bool(data.get("stop_hook_active", False)),
     )
 
 
@@ -161,15 +154,12 @@ def emit_post_tool_feedback(ctx: HookContext, problem_text: str = "") -> None:
 
 
 def emit_stop_decision(ctx: HookContext, should_continue: bool, reason: str = "") -> None:
-    """Emit Stop hook result (block stop & force retry when tests fail) and exit."""
+    """Emit Stop hook result (block stop & force retry when checks fail) and exit."""
     if ctx.agent == "antigravity":
         payload = (
             {"decision": "continue", "reason": reason} if should_continue else {"decision": "allow"}
         )
         print(json.dumps(payload))
-        sys.exit(0)
-    if ctx.agent == "cursor":
-        print(json.dumps({"followup_message": reason} if should_continue else {}))
         sys.exit(0)
     if should_continue:
         print(reason, file=sys.stderr)

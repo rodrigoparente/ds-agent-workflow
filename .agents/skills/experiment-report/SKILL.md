@@ -21,6 +21,6 @@ Transforms executed notebook or script outputs into a concise, verified summary 
    - Trace every number, percentage lift, and comparison to an observed output; remove unsupported causal or speculative claims.
    - Confirm baseline comparisons (if applicable) and all `## Verification` items in `specs/<NN-name>.md` are addressed.
 4. **Update spec, sync context & present summary:**
-   Update `specs/<NN-name>.md` to `Status: executed` and fold newly confirmed truths or `## Context Deltas` (schemas, domain quirks/filters, shared modules, baselines) into `specs/context.md` (creating it if needed, edited in place as a concise snapshot). Share the TL;DR and key observations in chat with a link to `docs/reports/<NN-name>.md`, mention that a `.docx` export is available on request, and wait for user direction.
+   Update `specs/<NN-name>.md` to `Status: executed` and fold confirmed truths or `## Context Deltas` into `specs/context.md` (per `spec` Step 5). Share the TL;DR and key observations in chat with a link to `docs/reports/<NN-name>.md`, mention that a `.docx` export is available on request, and wait for user direction.
 5. **Optional Word (`.docx`) export:**
    If requested, run `uv run python .agents/tools/export_docx.py docs/reports/<NN-name>.md` (for PDF, open the `.docx` and Save as PDF; Markdown remains the source of truth).

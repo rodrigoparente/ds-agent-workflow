@@ -20,7 +20,7 @@ Output language: English by default (or match the user's requested language).
 
 The user often doesn't know what they want, or doesn't know the terms. Do not research until the goal is clear.
 
-- Use `ask_question` / `AskUserQuestion` with selectable options (1-3 questions per round; keep going until the goal is clear).
+- Use your structured question tool with selectable options (1-3 questions per round; keep going until the goal is clear).
 - Find out, in this order, skipping whatever the user already said:
   1. **Topic:** what do they want to understand, and what triggered it?
   2. **Purpose:** what will they do with it (learn, decide, build, write, teach)?

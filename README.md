@@ -1,6 +1,6 @@
 # Data Science AI Workflow Starter Pack (`ds-starter-pack`)
 
-A lightweight, human-in-the-loop template for Data Science, ML, and AI projects paired with AI coding assistants (Google Antigravity, Claude Code, Cursor).
+A lightweight, human-in-the-loop framework for Data Science, ML, and Data Engineering projects paired with AI coding assistants (Google Antigravity, Claude Code, Cursor).
 
 $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} \longrightarrow \textbf{Run (User)} \longrightarrow \textbf{Report} \longrightarrow \textbf{Presentation}$$
 
@@ -8,11 +8,13 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 
 ## Key Design Choices
 
-- **Human-in-the-Loop Execution:** The agent collaborates on specs, writes and lints code, runs unit tests, and summarizes results—but **you always run code** in Jupyter Lab or your terminal.
-- **Spec-First Workflow ([OpenSpec](https://github.com/Fission-AI/OpenSpec)-inspired):** Initiatives use a lightweight contract in `specs/<NN-name>.md` (`draft → approved → executed`) paired with a living `specs/context.md` snapshot. Clear tweaks support fast-forward updates so docs and code stay synced without slowing down iteration.
-- **Agent and Git-Friendly Notebooks ([Jupytext](https://jupytext.readthedocs.io/) + [nbstripout](https://github.com/kynan/nbstripout)):** The agent edits clean, flat Python files in `notebooks/py/<NN-name>.py`, which automatically sync to `notebooks/<NN-name>.ipynb`. Both are tracked in Git: `nbstripout` automatically strips heavy cell outputs on `git commit` / `git diff` while preserving your local executed outputs on disk so `.agents/tools/nb_summary.py` can read them.
-- **Managed with `uv` + Shareable Notebooks:** Project packages live in `pyproject.toml` and `uv.lock` (managed with [uv](https://docs.astral.sh/uv/), with zero `build/` or `*.egg-info/` artifacts). Every notebook also carries a commented `# %pip install` cell at the top (`# # %pip install` in `.py`) so local runs stay fast via `uv sync` while anyone you share `.ipynb` with can uncomment and run standalone.
-- **Cross-Agent Automation Hooks:** Shared lifecycle hooks in `.agents/hooks/` run across **Google Antigravity** (`.agents/hooks.json`), **Claude Code** (`.claude/settings.json`), and **Cursor** (which imports `.claude/settings.json` and `.agents/skills/`).
+- **Human-in-the-Loop Execution (*"Agent Generates, You Run"*):** Autonomous agent compute loops break down in data work due to long-running queries/training, warehouse/GPU costs, data privacy, and empirical judgment. Here, the agent collaborates on specs, writes and lints code, and runs fast synthetic `pytest` suites—while **you always execute** notebooks, scripts, and apps. After runs, `.agents/tools/nb_summary.py` lets the agent inspect executed outputs without reading `.env*` or raw `data/`.
+- **Pragmatic [Cookiecutter Data Science](https://cookiecutter-data-science.drivendata.org/) Folder Structure:** Preserves CCDS's proven separation of immutable, git-ignored `data/` and `models/`, `notebooks/`, `docs/reports/`, `docs/figures/`, and `tests/`, while flattening deeply nested `src/<pkg>/...` boilerplate into plain `scripts/` (reusable modules and pipelines), thin `apps/` (dashboards/APIs), and `specs/`—linked end-to-end by sequential `<NN-name>` prefixes (`01-sales-eda`, `02-baseline`).
+- **Agent- and Git-Friendly Notebooks ([Jupytext](https://jupytext.readthedocs.io/) + [nbstripout](https://github.com/kynan/nbstripout) + [uv](https://docs.astral.sh/uv/)):** Raw `.ipynb` JSON causes base64 diff bloat, merge conflicts, and fragile LLM edits. Instead, agents edit flat Python percent files in `notebooks/py/<NN-name>.py`—formatted, checked, and synced to `notebooks/<NN-name>.ipynb` via `check_notebook.py`. Both are tracked in Git: `nbstripout` strips outputs on commit/diff while keeping your executed outputs on disk for `nb_summary.py`. Dependencies live in `pyproject.toml` (managed via `uv`), and Cell 1 carries `# # %pip install -q ...` (commented in `.ipynb`) so local runs stay fast while shared `.ipynb` files remain runnable standalone.
+- **Empirical Spec-Driven Workflow ([OpenSpec](https://github.com/Fission-AI/OpenSpec) + [Superpowers](https://github.com/obra/superpowers)):** Pure software SDD frameworks assume deterministic requirements and upfront unit tests, which misfires on empirical data exploration. `spec` combines the best of both:
+  - *From OpenSpec:* Concise initiative contracts (`specs/<NN-name>.md`: `draft → approved → executed`) paired with a living project truth snapshot (`specs/context.md`) updated via `[ADD]`/`[MODIFY]`/`[REMOVE]` **Context Deltas**, plus single-turn **Fast-Forward** updates on unambiguous tweaks.
+  - *From Superpowers:* Socratic brainstorming before drafting open scope, a strict **revision-vs-approval hard gate** (clarifying edits keep `Status: draft` instead of triggering premature code), proportional task breakdowns, and **data-contract / invariant gates** (`assert` checks on table grain, joins, and split leakage plus synthetic `pytest` suites) as DS/DE's equivalent of TDD—while keeping open-ended EDA without artificial metrics first-class.
+- **Cross-Agent Lifecycle Hooks:** Shared `.agents/hooks/` run across **Google Antigravity** (`.agents/hooks.json`), **Claude Code** (`.claude/settings.json`), and **Cursor** (which imports `.claude/settings.json` and `.agents/skills/`).
 
 ---
 
@@ -21,12 +23,12 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 **Prerequisite:** Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it yet (no pre-installed Python needed):
 
 - **macOS / Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv`)
-- **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+- **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"` *(run `git config --global core.symlinks true` before cloning so `.claude/skills` stays symlinked)*
 
 ```bash
 # 1. Clone into your new project folder with a fresh Git history
 git clone <template-repo-url> my-ds-project && cd my-ds-project
-rm -rf .git README.md && git init
+rm -rf .git && git init
 
 # 2. Install workspace tooling (JupyterLab, Jupytext, nbstripout, Ruff, Pytest, python-pptx, pandoc)
 uv sync
@@ -69,12 +71,12 @@ data/                         local datasets, run logs, and outputs (git-ignored
 
 ## Workflow & Skills
 
-Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules, collaboration principles, and handoff commands are in [AGENTS.md](AGENTS.md).
+Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules and handoff boundaries are in [AGENTS.md](AGENTS.md).
 
 | Stage | Skill | Deliverable | Execution Owner |
 |---|---|---|:---:|
 | **1. Research** *(optional)* | `research` | `docs/research/<name>.md` | Agent |
-| **2. Spec** | `spec` | `specs/<NN-name>.md` | Collaborative |
+| **2. Spec** | `spec` | `specs/<NN-name>.md` (`+ specs/context.md`) | Collaborative |
 | **3. Code** | `write-code` | `notebooks/py/<NN-name>.py` $\leftrightarrow$ `.ipynb`, `scripts/`, `apps/`, `tests/` | Agent |
 | **4. Run** | *User executes* | Outputs in `notebooks/`, `models/`, `data/`, or terminal | **User (Always)** |
 | **5. Report** | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent |
@@ -84,7 +86,7 @@ Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules,
 
 ## Lifecycle Hooks & Permissions
 
-- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (`ruff format`, `ruff check`, AST/budget/install/path/plot checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
-- **`stop_tests.py` (`Stop`):** Runs `pytest -x -q` before the agent finishes when Python files under `scripts/`, `apps/`, `tests/` (if `tests/test_*.py` exists) or `.agents/hooks/`, `.agents/tools/`, `.agents/skills/` were modified (skipped on interrupted Antigravity stops).
-- **`session_start.py` (`SessionStart`):** Injects active Git branch, spec statuses, and next `NN-` prefix, installs the `nbstripout` Git filter, and warns if workspace tooling is missing.
-- **Permissions (`.claude/settings.json`):** Allows safe helper/test commands (`uv run pytest`, `uv run ruff`, `.agents/tools/*`, skill helpers), asks before `git commit`/`push` or `uv add`/`remove`/`sync`, and denies reads of `.env*`, `~/.ssh`, or direct reads/edits of `notebooks/*.ipynb`.
+- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (`ruff format`, `ruff check`, line/function/class budgets, `# # %pip` + `importlib.metadata` package checks, `ROOT`-anchored path checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
+- **`stop_tests.py` (`Stop`):** Catches unresolved Python/notebook lint issues on `Stop` in Antigravity (where `PostToolUse` does not feed errors back to the model) and runs `pytest -x -q` before finishing when Python files under `scripts/`, `apps/`, `tests/` or `.agents/{hooks,tools,skills}/` changed.
+- **`session_start.py` (`SessionStart`):** Injects active Git branch, spec statuses, living `specs/context.md` presence, and next `NN-` prefix, installs the `nbstripout` Git filter, and warns if workspace tooling is missing.
+- **Permissions (`.claude/settings.json`):** Allows safe helper/test commands (`uv run [--no-sync] pytest`, `uv run [--no-sync] ruff`, `.agents/tools/*`, skill helpers), asks before `git commit`/`push` or `uv add`/`remove`/`sync`, and denies reads of `.env*`, `~/.ssh`, or direct reads/edits of `notebooks/*.ipynb`.

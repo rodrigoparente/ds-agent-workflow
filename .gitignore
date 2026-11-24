@@ -1,7 +1,6 @@
 # Environments & caches
 .venv/
 venv/
-node_modules/
 __pycache__/
 *.pyc
 .ruff_cache/

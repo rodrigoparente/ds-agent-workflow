@@ -73,4 +73,4 @@ See `assets/example.json` for `tldr`, `agenda`, `section`, `compare`, `flow`, `c
 - **Stats cards:** `"stats": [{"value": "89.1%", "label": "Accuracy", "delta": "+8.0 pts"}]` (`delta` optional)
 - **Code block(s):** `"code": {"title": "file.py", "tone": "info", "start_line": 10, "highlight": [12], "snippet": "..."}` (or `"lines": [...]`; pass a 2-item list for side-by-side, or pair 1 block with `"bullets"`)
 - **Footer attribution:** `"source": "Held-out test set (n = 20,000)"`
-- **Thanks & localization:** `"thanks"` accepts optional `"title"`, `"subtitle"`, and `"contact"`. Override `"title"` on `tldr`, `agenda`, `conclusion`, or `thanks` when presenting in a language other than English.
+- **Thanks fields:** `"thanks"` accepts optional `"title"`, `"subtitle"`, and `"contact"`.

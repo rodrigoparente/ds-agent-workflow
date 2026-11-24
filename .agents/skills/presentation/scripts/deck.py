@@ -358,13 +358,10 @@ def _code_block(s, block, x, y, w, h, compact=False):
     for i, line in enumerate(lines):
         line_no = start + i
         is_hi = line_no in highlights
-        bg = hi_bg if is_hi else NAVY
+        bg, num_fg, code_fg = (hi_bg, hi_num, WHITE) if is_hi else (NAVY, MUTED, CODE_FG)
         t.rows[i].height = Inches(row_h)
-        num_fg = hi_num if is_hi else MUTED
         _code_cell(t.cell(i, 0), str(line_no), font_sz, num_fg, bg, is_hi, PP_ALIGN.RIGHT)
-        _code_cell(
-            t.cell(i, 1), line or " ", font_sz, WHITE if is_hi else CODE_FG, bg, is_hi, LEFT_
-        )
+        _code_cell(t.cell(i, 1), line or " ", font_sz, code_fg, bg, is_hi, LEFT_)
 
 
 def code(s, spec_code, x, y, w, compact=False):

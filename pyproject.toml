@@ -24,7 +24,7 @@ select = ["E", "F", "I", "B", "C90", "SIM"]
 max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/py/*.py" = ["E402", "E501"]
+"notebooks/py/*.py" = ["B018", "E402", "E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

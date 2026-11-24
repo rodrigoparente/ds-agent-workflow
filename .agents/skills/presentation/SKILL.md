@@ -22,7 +22,7 @@ If the user hasn't named the source file(s) (report in `docs/reports/`, research
 
 ## 2. Quick setup (1 short round)
 
-Use `ask_question` / `AskUserQuestion` to collect only what the user hasn't already specified:
+Use your structured question tool to collect only what the user hasn't already specified:
 
 1. **Mode:** `auto` or `guided`.
 2. **Audience, goal & setting:** who is listening, what they should understand or decide, target duration (~1 slide per 1–2 minutes), and technical depth.
@@ -45,7 +45,7 @@ Read `references/story.md` before structuring slides.
 
 - Show the complete numbered slide-by-slide outline:
   `Slide # · Title (informative topic label) · Layout/evidence (and figure path if used) · Brief focus`
-- Ask for explicit approval via `ask_question` / `AskUserQuestion` (`(Recommended) Approve outline and build deck` vs. `Make changes`).
+- Ask for explicit approval via your structured question tool (`(Recommended) Approve outline and build deck` vs. `Make changes`).
 - **Any request to add, remove, reorder, or edit slides is a revision—NOT approval.** Update and show the revised outline, then **STOP again** for explicit approval.
 - **Do NOT create `slides.json` or run `deck.py` until the latest outline is explicitly approved with no pending edits.**
 
@@ -73,6 +73,6 @@ Share the `.pptx` path with the user and review it together: apply any requested
 
 ## 6. Export and stop
 
-Use `ask_question` / `AskUserQuestion` to ask which format to deliver: **pptx**, **pdf**, or **both**. PDF: `soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`. Keep only the chosen files next to `slides.json`.
+Ask which format to deliver via your structured question tool: **pptx**, **pdf**, or **both**. PDF: `soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`. Keep only the chosen files next to `slides.json`.
 
 Tell the user the output paths and stop. Do not start anything else.

@@ -29,4 +29,4 @@ Data quality, sample size, edge cases, or assumptions to keep in mind.
 1. ...
 
 ## Reproduce
-Run `notebooks/<NN-name>.ipynb` (paired with `notebooks/py/<NN-name>.py`) or `scripts/<NN-name>.py`.
+Run `notebooks/<NN-name>.ipynb` (paired with `notebooks/py/<NN-name>.py`) or `scripts/<name>.py`.
