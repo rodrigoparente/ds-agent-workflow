@@ -1,9 +1,9 @@
 ---
-name: experiment-report
+name: report
 description: Generate a clear, verified summary report from executed notebook or script outputs. Triggers whenever the user requests results, summaries, findings, analysis write-ups, or reports after running code.
 ---
 
-# Experiment Report
+# Report
 
 Transforms executed notebook or script outputs into a concise, verified summary report in `docs/reports/<NN-name>.md`.
 

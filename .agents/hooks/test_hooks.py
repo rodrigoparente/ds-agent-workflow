@@ -196,7 +196,7 @@ def test_stop_tests_routing_and_antigravity_lint(
 
 
 def test_check_notebook_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    skel = ROOT / ".agents" / "skills" / "write-code" / "assets" / "skeleton.py"
+    skel = ROOT / ".agents" / "skills" / "code" / "assets" / "skeleton.py"
     assert check_notebook.problems_in(skel.read_text(encoding="utf-8")) == []
 
     # try/except and consecutive code cells are permitted

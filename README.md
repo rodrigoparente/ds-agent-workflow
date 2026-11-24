@@ -77,9 +77,9 @@ Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules 
 |---|---|---|:---:|
 | **1. Research** *(optional)* | `research` | `docs/research/<name>.md` | Agent |
 | **2. Spec** | `spec` | `specs/<NN-name>.md` (`+ specs/context.md`) | Collaborative |
-| **3. Code** | `write-code` | `notebooks/py/<NN-name>.py` $\leftrightarrow$ `.ipynb`, `scripts/`, `apps/`, `tests/` | Agent |
+| **3. Code** | `code` | `notebooks/py/<NN-name>.py` $\leftrightarrow$ `.ipynb`, `scripts/`, `apps/`, `tests/` | Agent |
 | **4. Run** | *User executes* | Outputs in `notebooks/`, `models/`, `data/`, or terminal | **User (Always)** |
-| **5. Report** | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent |
+| **5. Report** | `report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent |
 | **6. Presentation** | `presentation` | `docs/presentations/<name>/<name>.pptx` | Collaborative & Agent |
 
 ---

@@ -2,7 +2,7 @@
 """Format, check, and sync an experiment notebook (jupytext percent .py file).
 
 Usage: python3 .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
-Runs ruff format + ruff check, enforces size/structure rules from write-code/SKILL.md,
+Runs ruff format + ruff check, enforces size/structure rules from code/SKILL.md,
 checks that imported packages are listed in cell 1 (`# # %pip install -q ...`), catches bare
 relative project paths, and syncs the paired .ipynb in notebooks/.
 """
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents" / "hooks"))
 from common import run_project_tool, run_ruff  # noqa: E402
 
-# Keep these thresholds in sync with .agents/skills/write-code/SKILL.md
+# Keep these thresholds in sync with .agents/skills/code/SKILL.md
 MAX_LINES = 220
 MAX_CELL = 35
 MAX_DEF_LINES = 15
@@ -332,7 +332,7 @@ def main(paths: list[str]) -> None:
     for path in paths:
         if problems := check_one_notebook(path):
             failed = True
-            print(f"{path} breaks the notebook rules in write-code/SKILL.md:")
+            print(f"{path} breaks the notebook rules in code/SKILL.md:")
             for item in problems:
                 print(f"- {item}")
         else:

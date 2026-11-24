@@ -22,7 +22,7 @@ Aligns on what we are doing, what inputs and rules apply, and how correctness wi
    - **Draft & confirm (`Status: draft`):** Use for new initiatives or changes with open trade-offs or `## Assumptions (confirm)`. Share a concise summary and link to `specs/<NN-name>.md`, then ask for explicit approval via your structured question tool before creating/editing code. Answering clarifying questions or requesting spec edits is a revision—update the draft and re-confirm.
    - **Fast-forward (`Status: approved`):** Use for clear, unambiguous updates or fixes on an existing spec with zero open assumptions—or when the user explicitly asks to fast-forward or implement directly. Update `specs/<NN-name>.md` first (log `- *[vN]:* ...` under `## Updates`, set `Status: approved`) and proceed straight to code in the same turn.
 5. **Sync living truth (`specs/context.md`):**
-   Once work is verified/executed (via `experiment-report`, test/log verification, or user confirmation), set `Status: executed` and fold confirmed `## Context Deltas` into `specs/context.md` (create lazily; keep concise and edit in place as a current snapshot of schemas, domain rules/quirks, shared modules, and baselines—not a changelog).
+   Once work is verified/executed (via `report`, test/log verification, or user confirmation), set `Status: executed` and fold confirmed `## Context Deltas` into `specs/context.md` (create lazily; keep concise and edit in place as a current snapshot of schemas, domain rules/quirks, shared modules, and baselines—not a changelog).
 
 ## Iterating vs. New Specs
 
