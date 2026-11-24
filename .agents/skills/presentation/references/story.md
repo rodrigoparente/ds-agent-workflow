@@ -63,3 +63,14 @@ Roughly one slide per 1–2 minutes of the allotted time. Fewer, clearer slides 
 ## Figures from the report & `docs/figures/`
 
 Reuse saved experiment figures whenever they carry the message better than text or tables. One figure per slide (`image`), or two comparable figures (`images`), with a title that clearly names what the chart shows (e.g., *"Validation ROC Curve by Model"*). If one chart carries two distinct findings, show it on two slides with different titles and notes.
+
+## JSON quick reference
+
+See `assets/example.json` for `tldr`, `agenda`, `section`, `compare`, `flow`, `callout`, `stats`, `bars`, `table`, `grid`, `timeline`, `conclusion`, and `thanks`. Additional/optional fields:
+
+- **Single figure:** `"image": "figures/01_roc.png"` (combine with `"bullets": [...]` for `image` + `bullets`)
+- **Two figures:** `"images": [{"path": "figures/01_a.png", "caption": "Baseline"}, {"path": "figures/01_b.png", "caption": "Tuned"}]`
+- **Stats cards:** `"stats": [{"value": "89.1%", "label": "Accuracy", "delta": "+8.0 pts"}]` (`delta` optional)
+- **Code block(s):** `"code": {"title": "file.py", "tone": "info", "start_line": 10, "highlight": [12], "snippet": "..."}` (or `"lines": [...]`; pass a 2-item list for side-by-side, or pair 1 block with `"bullets"`)
+- **Footer attribution:** `"source": "Held-out test set (n = 20,000)"`
+- **Thanks & localization:** `"thanks"` accepts optional `"title"`, `"subtitle"`, and `"contact"`. Override `"title"` on `tldr`, `agenda`, `conclusion`, or `thanks` when presenting in a language other than English.

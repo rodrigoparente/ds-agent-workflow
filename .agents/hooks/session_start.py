@@ -5,23 +5,21 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import emit_session_start, find_project_tool, parse_payload, run_project_tool
-
-
-def _git_stdout(root: Path, *args: str) -> str | None:
-    if not (root / ".git").exists() or not shutil.which("git"):
-        return None
-    r = subprocess.run(["git", *args], capture_output=True, text=True, cwd=root)
-    return r.stdout if r.returncode == 0 else None
+from common import (
+    emit_session_start,
+    find_project_tool,
+    git_stdout,
+    parse_payload,
+    run_project_tool,
+)
 
 
 def _has_nbstripout_filter(root: Path) -> bool:
-    out = _git_stdout(root, "config", "--get", "filter.nbstripout.clean")
+    out = git_stdout(root, "config", "--get", "filter.nbstripout.clean")
     return bool(out and out.strip())
 
 
@@ -64,9 +62,9 @@ def build_context_summary(root: Path) -> str:
     """Build a compact workspace status summary."""
     lines: list[str] = []
 
-    if (branch_out := _git_stdout(root, "branch", "--show-current")) is not None:
+    if (branch_out := git_stdout(root, "branch", "--show-current")) is not None:
         branch = branch_out.strip() or "HEAD"
-        status_out = _git_stdout(root, "status", "--porcelain") or ""
+        status_out = git_stdout(root, "status", "--porcelain") or ""
         dirty = len([ln for ln in status_out.splitlines() if ln.strip()])
         lines.append(f"Git: branch `{branch}` ({dirty} uncommitted file(s))")
 

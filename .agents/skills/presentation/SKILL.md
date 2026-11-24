@@ -1,6 +1,6 @@
 ---
 name: presentation
-description: Build a clean executive slide deck (white, shades of blue, one idea per slide) from a report, research brief, or technical work. Supports an auto mode (agent proposes a slide outline for approval before building) and a guided mode (agent summarizes available material, user gives an outline in plain language, and agent refines it for approval before building), generating an editable .pptx with title, TL;DR, agenda, section dividers, code snippets, conclusion, thank-you slide, and presenter notes. Use whenever the user wants slides, a deck, a presentation or a talk based on their work, even if they don't know yet what to present or how.
+description: Build a clean executive .pptx slide deck (white & blue, one idea per slide) with presenter notes from a report, research brief, or technical work. Supports auto and guided outline modes. Use whenever the user wants slides, a deck, a presentation, or a talk.
 ---
 
 # Presentation
@@ -24,7 +24,7 @@ If the user hasn't named the source file(s) (report in `docs/reports/`, research
 
 Use `ask_question` / `AskUserQuestion` to collect only what the user hasn't already specified:
 
-1. **Mode:** `auto` (propose outline first) vs. `guided` (show content summary so you can provide an outline).
+1. **Mode:** `auto` or `guided`.
 2. **Audience, goal & setting:** who is listening, what they should understand or decide, target duration (~1 slide per 1–2 minutes), and technical depth.
 3. **Language & deck name:** match the source language unless told otherwise; ask what to name the deck (`docs/presentations/<name>/`, don't auto-name).
 
@@ -51,10 +51,10 @@ Read `references/story.md` before structuring slides.
 
 ## 4. Build
 
-Create `docs/presentations/<name>/` and copy any used figures into `docs/presentations/<name>/figures/`. Write `docs/presentations/<name>/slides.json` following `assets/example.json` and `references/story.md`:
+Create `docs/presentations/<name>/` and copy any used figures into `docs/presentations/<name>/figures/`. Write `docs/presentations/<name>/slides.json` using the layouts and JSON schema in `references/story.md` and `assets/example.json`:
 
-- Supported evidence layouts: `bullets`, `image`, `image`+`bullets`, `images`, `stats`, `callout`, `bars`, `compare`, `table`, `flow`, `timeline`, `grid`, `code`, `code`+`bullets`.
-- Include a closing `thanks` slide after `conclusion` (use a localized `title` such as `"Obrigado"` when the deck is not in English).
+- Include a closing `thanks` slide after `conclusion`.
+- For non-English decks, override `title` on `tldr`, `agenda`, `conclusion`, and `thanks` (e.g., `"Obrigado"`).
 - **Do not prefix section titles with numbers** (`1.`, `01`, `Section 1:`)—`deck.py` auto-numbers section dividers and the agenda.
 
 Build the deck:
@@ -73,6 +73,6 @@ Share the `.pptx` path with the user and review it together: apply any requested
 
 ## 6. Export and stop
 
-Ask (interactive) which format to deliver: **pptx**, **pdf**, or **both**. PDF: `soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`. Keep only the chosen files next to `slides.json`.
+Use `ask_question` / `AskUserQuestion` to ask which format to deliver: **pptx**, **pdf**, or **both**. PDF: `soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`. Keep only the chosen files next to `slides.json`.
 
 Tell the user the output paths and stop. Do not start anything else.

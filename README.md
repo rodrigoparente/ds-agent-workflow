@@ -74,18 +74,17 @@ Skills live in `.agents/skills/` (linked at `.claude/skills`); full agent rules,
 | Stage | Skill | Deliverable | Execution Owner |
 |---|---|---|:---:|
 | **1. Research** *(optional)* | `research` | `docs/research/<name>.md` | Agent |
-| **2. Spec** | `experiment-spec` | `specs/<NN-name>.md` | Collaborative |
-| **3. Data Reference** | `data-catalog` | Table schemas & loading recipes | Reference |
-| **4. Code** | `write-code` | `notebooks/py/<NN-name>.py` $\leftrightarrow$ `.ipynb`, `scripts/`, `apps/`, `tests/` | Agent |
-| **5. Run** | *User executes* | Outputs in `notebooks/`, `models/`, `data/`, or terminal | **User (Always)** |
-| **6. Report** | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent |
-| **7. Presentation** | `presentation` | `docs/presentations/<name>/<name>.pptx` | Collaborative & Agent |
+| **2. Spec** | `spec` | `specs/<NN-name>.md` | Collaborative |
+| **3. Code** | `write-code` | `notebooks/py/<NN-name>.py` $\leftrightarrow$ `.ipynb`, `scripts/`, `apps/`, `tests/` | Agent |
+| **4. Run** | *User executes* | Outputs in `notebooks/`, `models/`, `data/`, or terminal | **User (Always)** |
+| **5. Report** | `experiment-report` | `docs/reports/<NN-name>.md` (`.docx` on request) | Agent |
+| **6. Presentation** | `presentation` | `docs/presentations/<name>/<name>.pptx` | Collaborative & Agent |
 
 ---
 
 ## Lifecycle Hooks & Permissions
 
-- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (format, AST/budget/install/path/plot checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
+- **`lint.py` (`PostToolUse`):** Runs `check_notebook.py` on `notebooks/py/*.py` edits (`ruff format`, `ruff check`, AST/budget/install/path/plot checks, `.ipynb` sync) and `ruff format` + `ruff check` on all other `.py` edits.
 - **`stop_tests.py` (`Stop`):** Runs `pytest -x -q` before the agent finishes when Python files under `scripts/`, `apps/`, `tests/` (if `tests/test_*.py` exists) or `.agents/hooks/`, `.agents/tools/`, `.agents/skills/` were modified (skipped on interrupted Antigravity stops).
 - **`session_start.py` (`SessionStart`):** Injects active Git branch, spec statuses, and next `NN-` prefix, installs the `nbstripout` Git filter, and warns if workspace tooling is missing.
 - **Permissions (`.claude/settings.json`):** Allows safe helper/test commands (`uv run pytest`, `uv run ruff`, `.agents/tools/*`, skill helpers), asks before `git commit`/`push` or `uv add`/`remove`/`sync`, and denies reads of `.env*`, `~/.ssh`, `./data/`, or direct edits to `notebooks/*.ipynb`.

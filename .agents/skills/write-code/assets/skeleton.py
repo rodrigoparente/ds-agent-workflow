@@ -45,9 +45,9 @@ path = DATA / f"{NAME}.parquet"
 if path.exists() and not REFRESH_DATA:
     df = pd.read_parquet(path)
 else:
-    # Load source data (e.g. SQL query, database, or raw file)
-    # df = pd.read_csv(DATA / "raw.csv")
-    DATA.mkdir(exist_ok=True)
+    # Replace with source query or file read (e.g. pd.read_csv(DATA / "raw.csv"))
+    df = pd.DataFrame()
+    DATA.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path)
 print(df.shape)
 
@@ -77,3 +77,4 @@ print(summary.round(4))
 fig, ax = plt.subplots()
 summary["metric"].plot.bar(ax=ax)
 fig.savefig(FIGURES / f"{NAME}_summary.png", dpi=150, bbox_inches="tight")
+plt.show()

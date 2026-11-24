@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / ".agents" / "skills" / "presentation" / "scripts")
 
 import check_notebook  # noqa: E402
 import common  # noqa: E402
+import export_docx  # noqa: E402
 import lint  # noqa: E402
 import nb_summary  # noqa: E402
 import papers  # noqa: E402
@@ -261,7 +262,7 @@ def test_lint_routes_python_and_notebook_files(
 
     monkeypatch.setattr(lint, "run_project_tool", lambda _r, *a, **kw: calls.append(a) or FailFmt())
     err = lint.check_edited_file(common.HookContext("claude", tmp_path, "scripts/helpers.py"))
-    assert "ruff format failed" in err
+    assert "ruff format:" in err
     assert len(calls) == 1
 
 
@@ -338,17 +339,30 @@ def test_stop_tests_skips_without_git_or_canceled_or_notebook_only(
 
     # Notebook-only changes in git skip pytest
     (tmp_path / ".git").mkdir()
+    git_cmds: list[list[str]] = []
 
     class FakeResult:
         returncode = 0
         stdout = " M notebooks/py/01-eda.py\n?? docs/reports/01-eda.md\n"
 
+    def fake_git(cmd, **_kw):
+        git_cmds.append(cmd)
+        return FakeResult()
+
     monkeypatch.setattr(
-        stop_tests.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None
+        common.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None
     )
-    monkeypatch.setattr(stop_tests.subprocess, "run", lambda *a, **kw: FakeResult())
+    monkeypatch.setattr(common.subprocess, "run", fake_git)
     ctx = common.HookContext(agent="claude", root=tmp_path)
     assert stop_tests.check_tests_on_stop(ctx) == (False, "")
+    assert git_cmds == [["git", "status", "--porcelain", "-uall"]]
+
+    # Untracked files inside brand-new scripts/ and tests/ folders trigger pytest
+    FakeResult.stdout = "?? scripts/new_mod.py\n?? tests/test_new_mod.py\n"
+    assert stop_tests._changed_python_paths(tmp_path) == [
+        "scripts/new_mod.py",
+        "tests/test_new_mod.py",
+    ]
 
 
 def test_check_notebook_reports_format_expansion() -> None:
@@ -393,12 +407,23 @@ def test_presentation_example_json_schema() -> None:
     for slide in spec["slides"]:
         min_words = 6 if slide["type"] == "section" else 15
         assert slide.get("notes") and len(slide["notes"].split()) >= min_words
-        for key in ("flow", "callout", "bars", "compare", "table", "grid", "timeline", "code"):
+        for key in (
+            "flow",
+            "callout",
+            "stats",
+            "bars",
+            "compare",
+            "table",
+            "grid",
+            "timeline",
+            "code",
+        ):
             if key in slide:
                 seen_types.add(key)
     assert seen_types == {
         "flow",
         "callout",
+        "stats",
         "bars",
         "compare",
         "table",
@@ -412,7 +437,7 @@ def test_deck_check_example_json_no_warnings(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     pytest.importorskip("pptx")
-    import deck  # noqa: E402
+    import deck
 
     example_path = ROOT / ".agents" / "skills" / "presentation" / "assets" / "example.json"
     spec = json.loads(example_path.read_text(encoding="utf-8"))
@@ -425,6 +450,20 @@ def test_deck_check_example_json_no_warnings(
     for slide in list(prs.slides)[1:]:
         texts = [sh.text_frame.text for sh in slide.shapes if sh.has_text_frame]
         assert spec["title"] not in texts
+
+    no_sections = {
+        "title": "Demo",
+        "slides": [{"type": "agenda", "notes": "Agenda without sections."}],
+    }
+    prs_no_sec = deck.build(no_sections, example_path.parent)
+    assert len(prs_no_sec.slides) == 2
+
+
+def test_deck_check_warnings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pytest.importorskip("pptx")
+    import deck
 
     bad_spec = {
         "title": "Bad",
@@ -453,15 +492,26 @@ def test_deck_check_example_json_no_warnings(
                 "flow": [{"label": str(i), "text": "step"} for i in range(6)],
                 "notes": "Flow note.",
             },
+            {
+                "type": "bogus",
+                "title": "Bad grid & images",
+                "grid": [{"title": str(i), "text": "x"} for i in range(5)],
+                "images": ["missing.png"],
+                "notes": "Grid and images warning note.",
+            },
         ],
     }
     deck.check(bad_spec, tmp_path)
     warnings = capsys.readouterr().out
+    assert "slide 1 (title): no presenter notes" in warnings
     assert "auto-numbers sections" in warnings
     assert "more than 3 columns" in warnings
     assert "missing image missing.png" in warnings
     assert "more than 4 stats" in warnings
     assert "more than 5 steps" in warnings
+    assert "unknown slide type 'bogus'" in warnings
+    assert "grid expects 2, 3, 4, or 6 cards" in warnings
+    assert "images expects 2 figures" in warnings
 
     three_models = {
         "title": "Three Models",
@@ -482,25 +532,19 @@ def test_deck_check_example_json_no_warnings(
     }
     assert len(deck.build(three_models, tmp_path).slides) == 3
 
-    no_sections = {
-        "title": "Demo",
-        "slides": [{"type": "agenda", "notes": "Agenda without sections."}],
-    }
-    prs_no_sec = deck.build(no_sections, example_path.parent)
-    assert len(prs_no_sec.slides) == 2
-
 
 def test_deck_code_thanks_and_validation(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     pytest.importorskip("pptx")
-    import deck  # noqa: E402
-    from pptx.oxml.ns import qn  # noqa: E402
+    import deck
+    from pptx.oxml.ns import qn
 
     valid_spec = {
         "title": "Code & Thanks Demo",
         "author": "Ana",
         "date": "Nov 2026",
+        "notes": "Opening title slide notes.",
         "slides": [
             {
                 "type": "content",
@@ -659,4 +703,127 @@ def test_check_notebook_flags_relative_project_paths() -> None:
     skeleton_path = ROOT / ".agents" / "skills" / "write-code" / "assets" / "skeleton.py"
     skeleton_problems = check_notebook.problems_in(skeleton_path.read_text(encoding="utf-8"))
     assert not [p for p in skeleton_problems if p.startswith("Relative path")]
+
+
+def test_common_detect_root_workspace_precedence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path / "env_dir"))
+    ws = tmp_path / "ws_dir"
+    assert common._detect_root({"workspacePaths": [str(ws)]}) == ws.resolve()
+    assert common._detect_root({}) == (tmp_path / "env_dir").resolve()
+
+
+def test_common_emit_helpers(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        common.emit_post_tool_feedback(common.HookContext("antigravity", ROOT), "lint err")
+    assert exc.value.code == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "{}"
+    assert "lint err" in captured.err
+
+    with pytest.raises(SystemExit) as exc:
+        common.emit_post_tool_feedback(common.HookContext("claude", ROOT), "lint err")
+    assert exc.value.code == 2
+    assert "lint err" in capsys.readouterr().err
+
+    with pytest.raises(SystemExit) as exc:
+        common.emit_stop_decision(common.HookContext("antigravity", ROOT), True, "fix tests")
+    assert exc.value.code == 0
+    assert json.loads(capsys.readouterr().out) == {"decision": "continue", "reason": "fix tests"}
+
+    with pytest.raises(SystemExit) as exc:
+        common.emit_stop_decision(common.HookContext("cursor", ROOT), True, "fix tests")
+    assert exc.value.code == 0
+    assert json.loads(capsys.readouterr().out) == {"followup_message": "fix tests"}
+
+    with pytest.raises(SystemExit) as exc:
+        common.emit_session_start(common.HookContext("antigravity", ROOT), "hello")
+    assert exc.value.code == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "injectSteps": [{"systemMessage": {"systemMessage": "hello"}}]
+    }
+
+
+def test_check_notebook_edge_cases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # 1. Path("docs/figures") is flagged; print(...) paths and sns.set_theme() are not
+    nb_ok = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q seaborn\n"
+        "# %%\nimport seaborn as sns\n"
+        "# %% [markdown]\n# ## Note: read_excel( in markdown is ignored\n"
+        "# %%\n"
+        'NAME = "01-test"\n'
+        "sns.set_theme()\n"
+        'print("models/best.joblib")\n'
+        'print(f"models/{NAME}.joblib")\n'
+    )
+    assert check_notebook.problems_in(nb_ok, "notebooks/py/01-test.py") == []
+
+    # 2. Path("docs/figures"), .to_excel(, and .write_image( are caught
+    nb_bad = (
+        "# %% [markdown]\n# # Title\n"
+        "# %%\n# # %pip install -q pandas\n"
+        "# %%\nfrom pathlib import Path\nimport pandas as pd\n"
+        "# %% [markdown]\n# ## Step\n"
+        "# %%\n"
+        'Path("docs/figures").mkdir(parents=True, exist_ok=True)\n'
+        'pd.DataFrame().to_excel("out.xlsx")\n'
+        'fig.write_image("x.png")\n'
+    )
+    errs = check_notebook.problems_in(nb_bad, "notebooks/py/01-test.py")
+    assert any("Relative path 'docs/figures'" in e for e in errs)
+    assert any("openpyxl" in e and "kaleido" in e for e in errs)
+
+    # 3. check_one_notebook skips _sync_ipynb when problems_in finds violations
+    nb_file = tmp_path / "01-bad.py"
+    nb_file.write_text("# %%\nx = 1\n", encoding="utf-8")
+
+    class OkResult:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    sync_called: list[str] = []
+    monkeypatch.setattr(check_notebook, "run", lambda *args: OkResult())
+    monkeypatch.setattr(check_notebook, "_sync_ipynb", lambda p: sync_called.append(p) or [])
+    problems = check_notebook.check_one_notebook(str(nb_file))
+    assert problems
+    assert sync_called == []
+
+
+def test_export_docx_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    called: list[tuple[tuple[str, ...], dict[str, object]]] = []
+
+    class FakePypandoc:
+        @staticmethod
+        def convert_file(*args: str, **kwargs: object) -> None:
+            called.append((args, kwargs))
+
+    monkeypatch.setitem(sys.modules, "pypandoc", FakePypandoc)
+    with pytest.raises(SystemExit):
+        export_docx.main([str(tmp_path / "missing.md")])
+
+    report = tmp_path / "01-eda.md"
+    report.write_text("# Report\n", encoding="utf-8")
+    export_docx.main([str(report)])
+    assert called == [
+        (
+            (str(report.resolve()), "docx"),
+            {
+                "outputfile": str(report.resolve().with_suffix(".docx")),
+                "extra_args": [f"--resource-path={report.resolve().parent}"],
+            },
+        )
+    ]
+
+
+def test_claude_settings_and_spec_rename() -> None:
+    settings_path = ROOT / ".claude" / "settings.json"
+    allow_rules = json.loads(settings_path.read_text(encoding="utf-8"))["permissions"]["allow"]
+    assert {"Bash(git status)", "Bash(git diff)", "Bash(git log)"}.issubset(allow_rules)
+    assert "Bash(uv run nbstripout *)" not in allow_rules
+    assert (ROOT / ".agents" / "skills" / "spec" / "SKILL.md").is_file()
+    assert not (ROOT / ".agents" / "skills" / "experiment-spec").exists()
+
 

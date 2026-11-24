@@ -2,7 +2,7 @@
 """Format, check and sync an experiment notebook (jupytext percent .py file).
 
 Usage: python3 .agents/tools/check_notebook.py notebooks/py/<name>.py [more.py ...]
-Runs ruff format, enforces the size/documentation budget from write-code/SKILL.md,
+Runs ruff format + ruff check, enforces the size/documentation budget from write-code/SKILL.md,
 checks that every imported package is in the install cell, catches bare relative project
 paths and unsaved plots, then syncs the paired .ipynb in notebooks/. Prints problems
 and exits 1 if anything is wrong. Any tool or person can run it; coding agents also run
@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents" / "hooks"))
-from common import run_project_tool  # noqa: E402
+from common import run_project_tool, run_ruff  # noqa: E402
 
 # Keep these thresholds in sync with .agents/skills/write-code/SKILL.md
 MAX_LINES = 220  # max code lines across notebook (excluding markdown, comments, SQL)
@@ -36,8 +36,15 @@ PIP_NAME = {
 }
 PROVIDED = {"IPython", "scripts", "apps"}  # workspace & notebook builtins
 # calls that need a package which is never imported explicitly
-IMPLICIT = {".to_markdown(": "tabulate", "_parquet(": "pyarrow", "read_excel(": "openpyxl"}
-BARE_DIRS = {"models", "data"}
+IMPLICIT = {
+    ".to_markdown(": "tabulate",
+    "_parquet(": "pyarrow",
+    "read_excel(": "openpyxl",
+    ".to_excel(": "openpyxl",
+    ".write_image(": "kaleido",
+}
+BARE_DIRS = {"models", "data", "docs/figures"}
+LOG_CALLS = {"print", "warn", "debug", "info", "warning", "error"}
 REL_PATH_PREFIXES = (
     "models/",
     "data/",
@@ -49,6 +56,25 @@ REL_PATH_PREFIXES = (
     "../docs/figures",
 )
 PLOT_ROOTS = {"plt", "sns", "px"}
+PLOT_NON_DRAW = {
+    "show",
+    "close",
+    "tight_layout",
+    "savefig",
+    "rc",
+    "rcdefaults",
+    "set",
+    "set_theme",
+    "set_style",
+    "set_context",
+    "set_palette",
+    "color_palette",
+    "despine",
+    "ion",
+    "ioff",
+    "switch_backend",
+    "use",
+}
 PLOT_CALLS = {
     "subplots",
     "figure",
@@ -118,11 +144,23 @@ def _is_local_module(name: str, path: str) -> bool:
     return any(p.exists() for p in here)
 
 
+def _code_text(text: str) -> str:
+    """Return non-comment code lines across code cells (excluding triple-quoted strings)."""
+    return "\n".join(
+        ln
+        for kind, lines in parse_cells(collapse_strings(text))
+        if kind == "code"
+        for ln in lines
+        if not ln.lstrip().startswith("#")
+    )
+
+
 def missing_installs(tree, text, path):
     """Third-party packages the notebook needs that the install cell does not list."""
     if tree is None:
         return []
     have = installed_packages(text)
+    code = _code_text(text)
     need = [
         PIP_NAME.get(name, name)
         for name in sorted(_imported_roots(tree))
@@ -130,7 +168,7 @@ def missing_installs(tree, text, path):
         and name not in PROVIDED
         and not _is_local_module(name, path)
     ]
-    need += [pkg for call, pkg in IMPLICIT.items() if call in text and pkg not in need]
+    need += [pkg for call, pkg in IMPLICIT.items() if call in code and pkg not in need]
     return [pkg for pkg in need if norm(pkg) not in have]
 
 
@@ -264,8 +302,14 @@ def _call_name(node: ast.Call) -> str:
 def _relative_path_error(node: ast.AST, parent: ast.AST | None) -> str | None:
     if _is_div_rhs(node, parent):
         return None
+    is_log = isinstance(parent, ast.Call) and _call_name(parent) in LOG_CALLS
     prefix = _string_prefix(node)
-    if prefix and prefix.startswith(REL_PATH_PREFIXES) and not isinstance(parent, ast.JoinedStr):
+    if (
+        prefix
+        and not is_log
+        and prefix.startswith(REL_PATH_PREFIXES)
+        and not isinstance(parent, ast.JoinedStr)
+    ):
         return (
             f"Relative path '{prefix}...' (line {node.lineno}) breaks when Jupyter runs from "
             "notebooks/. Use DATA / ..., MODELS / ..., or FIGURES / ... (anchored to ROOT)."
@@ -306,7 +350,7 @@ def _is_plot_call(node: ast.Call) -> bool:
     if func.attr in DISPLAY_FNS and isinstance(func.value, ast.Name):
         return "Display" in func.value.id
     if isinstance(func.value, ast.Name) and func.value.id in PLOT_ROOTS:
-        return func.attr not in {"show", "close", "tight_layout", "savefig"}
+        return func.attr not in PLOT_NON_DRAW
     if isinstance(func.value, ast.Attribute) and func.value.attr == "plot":
         return True
     return False
@@ -379,24 +423,16 @@ def _sync_ipynb(path: str) -> list[str]:
 
 def check_one_notebook(path: str) -> list[str]:
     """Format, lint, validate, and sync a single notebook .py file."""
-    problems = []
     with open(path, encoding="utf-8") as f:
         before_code_lines = _count_code_lines(f.read())
 
-    fmt_res = run("ruff", "format", "--quiet", path)
-    if fmt_res is None:
-        problems.append("ruff is not installed or not found (run `uv sync`).")
-    elif fmt_res.returncode != 0:
-        problems.append("ruff format:\n" + (fmt_res.stderr or fmt_res.stdout).strip())
+    fatal, problems = run_ruff(run, path)
+    if fatal:
         return problems
-    else:
-        r = run("ruff", "check", "--fix", "--unfixable", "F401", "--quiet", path)
-        if r is not None and r.returncode != 0:
-            problems.append("ruff:\n" + (r.stdout or r.stderr).strip())
 
     with open(path, encoding="utf-8") as f:
         problems += problems_in(f.read(), path, before_code_lines=before_code_lines)
-    return problems + _sync_ipynb(path)
+    return problems if problems else _sync_ipynb(path)
 
 
 def main(paths):

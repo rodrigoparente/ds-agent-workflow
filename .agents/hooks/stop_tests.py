@@ -3,23 +3,20 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HookContext, emit_stop_decision, parse_payload, run_project_tool
+from common import HookContext, emit_stop_decision, git_stdout, parse_payload, run_project_tool
 
 
 def _changed_python_paths(root: Path) -> list[str]:
-    if not (root / ".git").exists() or not shutil.which("git"):
-        return []
-    r = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=root)
-    if r.returncode != 0:
+    out = git_stdout(root, "status", "--porcelain", "-uall")
+    if not out:
         return []
     paths: list[str] = []
-    for line in r.stdout.splitlines():
+    for line in out.splitlines():
         if len(line) < 4:
             continue
         path = line[3:].strip().split(" -> ")[-1].strip('"')

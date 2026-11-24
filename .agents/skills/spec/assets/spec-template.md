@@ -8,7 +8,7 @@ Research: docs/research/<name>.md (optional, delete if none)
 What we are exploring, analyzing, or building. Clear, concise description without requiring artificial goals or metrics.
 
 ## Data & Inputs
-Source tables, datasets, files, artifacts, or parameters (consult `data-catalog` if using documented project tables).
+Source tables, datasets, files, artifacts, or parameters.
 Clearly document the data management process:
 - Sources & join keys: ...
 - Deduplication & filters: ...

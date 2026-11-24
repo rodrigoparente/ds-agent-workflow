@@ -38,11 +38,11 @@ class HookContext:
 
 
 def _detect_root(payload: dict[str, Any]) -> Path:
-    if env_root := os.environ.get("CLAUDE_PROJECT_DIR"):
-        return Path(env_root).resolve()
     ws = payload.get("workspacePaths")
     if isinstance(ws, list) and ws:
         return Path(ws[0]).resolve()
+    if env_root := os.environ.get("CLAUDE_PROJECT_DIR"):
+        return Path(env_root).resolve()
     cwd = payload.get("cwd")
     if isinstance(cwd, str) and cwd:
         p = Path(cwd).resolve()
@@ -113,6 +113,14 @@ def parse_payload(stream: Any = None) -> HookContext:
     )
 
 
+def git_stdout(root: Path, *args: str) -> str | None:
+    """Run `git <args>` in `root` and return stdout on success, else None."""
+    if not (root / ".git").exists() or not shutil.which("git"):
+        return None
+    r = subprocess.run(["git", *args], capture_output=True, text=True, cwd=root)
+    return r.stdout if r.returncode == 0 else None
+
+
 def run_project_tool(
     root: Path, *args: str, timeout: int | None = None
 ) -> subprocess.CompletedProcess[str] | None:
@@ -122,6 +130,21 @@ def run_project_tool(
         return None
     cmd = (exe, *args[1:])
     return subprocess.run(cmd, capture_output=True, text=True, cwd=root, timeout=timeout)
+
+
+def run_ruff(runner: Any, target: str) -> tuple[bool, list[str]]:
+    """Run ruff format and check via `runner`. Return `(fatal_format_error, errors)`."""
+    fmt = runner("ruff", "format", "--quiet", target)
+    if fmt is None:
+        return False, ["ruff is not installed (run `uv sync`)."]
+    if fmt.returncode != 0:
+        out = (fmt.stderr or fmt.stdout).strip()
+        return True, [f"ruff format:\n{out}"]
+    chk = runner("ruff", "check", "--fix", "--unfixable", "F401", "--quiet", target)
+    if chk is not None and chk.returncode != 0:
+        out = (chk.stdout or chk.stderr).strip()
+        return False, [f"ruff check:\n{out}"]
+    return False, []
 
 
 def emit_post_tool_feedback(ctx: HookContext, problem_text: str = "") -> None:

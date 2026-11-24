@@ -8,7 +8,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import HookContext, emit_post_tool_feedback, parse_payload, run_project_tool
+from common import (
+    HookContext,
+    emit_post_tool_feedback,
+    parse_payload,
+    run_project_tool,
+    run_ruff,
+)
 
 
 def check_edited_file(ctx: HookContext) -> str:
@@ -29,20 +35,8 @@ def check_edited_file(ctx: HookContext) -> str:
         )
         return (r.stdout + "\n" + r.stderr).strip() if r.returncode != 0 else ""
 
-    fmt = run_project_tool(ctx.root, "ruff", "format", "--quiet", str(target))
-    if fmt is None:
-        return f"ruff is not installed (run `uv sync`) while checking {rel}."
-    if fmt.returncode != 0:
-        out = (fmt.stderr or fmt.stdout).strip()
-        return f"ruff format failed in {rel}:\n{out}"
-
-    r = run_project_tool(
-        ctx.root, "ruff", "check", "--fix", "--unfixable", "F401", "--quiet", str(target)
-    )
-    if r is not None and r.returncode != 0:
-        out = (r.stdout or r.stderr).strip()
-        return f"ruff check issues in {rel}:\n{out}"
-    return ""
+    _, errs = run_ruff(lambda *args: run_project_tool(ctx.root, *args), str(target))
+    return f"Lint issues in {rel}:\n" + "\n".join(errs) if errs else ""
 
 
 def main() -> None:

@@ -1,6 +1,6 @@
 ---
 name: research
-description: Learn a subject through research. Interviews the user to find out what they want, researches the web (quick) or the web plus academic papers on arXiv (deep), and writes a cited, storyline-style brief to docs/research/<name>.md for the user to read. Use whenever the user wants to understand, dive into, learn about, or deepen their knowledge on a topic, technique, paper area or field, even if they don't say "research" and even if they don't know the right terms yet. Not for simple lookups.
+description: Interview the user, research via web search (`quick`) or web plus Semantic Scholar and arXiv (`deep`), and write a cited storyline brief to docs/research/<name>.md. Use when the user wants to understand or learn a topic in depth, not for simple lookups.
 ---
 
 # Research
@@ -35,12 +35,9 @@ The user often doesn't know what they want, or doesn't know the terms. Do not re
 ## 2. Research
 
 Rules for both modes:
-- **Read pages, not snippets.** Fetch and read the source before using it.
-- Prefer primary sources (papers, official docs, original posts) over summaries of them.
-- Cross-check important claims across sources. Note disagreements and uncertainty; don't smooth them over.
-- Number sources as you go (`[1]`, `[2]`, ...) and note which were read fully.
-- Search for the *foundations* the user will need, not only the thing they asked about.
-- Run independent searches in parallel when you can.
+- **Read pages, not snippets.** Fetch and read primary sources (papers, official docs, original posts) rather than summaries.
+- Cross-check important claims across sources and run independent searches in parallel.
+- Number sources (`[1]`, `[2]`, ...) as you go and search for the *foundations* the user will need, not only the specific question.
 
 **quick**: ~6-12 good sources from web search. Enough to build an accurate, well-structured picture.
 
@@ -52,12 +49,12 @@ python3 .agents/skills/research/scripts/papers.py search "query" --source arxiv 
 ```
 
 - Start with survey papers for orientation, then specific papers, then the most-cited foundational ones.
-- Read abstracts to triage; read the full text via `https://arxiv.org/html/<id>` when available (falling back to `/abs/<id>`).
-- Aim for 20+ sources across web and papers. Mark papers you only read the abstract of.
+- Read abstracts to triage; read full text via `https://arxiv.org/html/<id>` when available (falling back to `/abs/<id>`).
+- Aim for 20+ sources across web and papers.
 
 ## 3. Write `docs/research/<name>.md`
 
-Create `docs/research/` if it doesn't exist. Read `references/storyline.md` and follow it. Knowledge is built: go broad to specific, explain what the user didn't ask for but needs, and cite everything.
+Create `docs/research/` if it doesn't exist. Read `references/storyline.md` and follow its structure, uncertainty/citation rules, and word-count targets.
 
 ## 4. Stop
 

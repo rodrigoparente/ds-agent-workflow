@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print a run notebook as readable text: markdown, code (first line, or all with --code), outputs.
 
-Usage: python .agents/tools/nb_summary.py notebooks/x.ipynb [--code] [--max 1500]
+Usage: python3 .agents/tools/nb_summary.py notebooks/x.ipynb [--code] [--max 1500]
 Outputs are truncated to --max characters each; images and rich media are listed, not dumped.
 """
 
@@ -129,11 +129,9 @@ def main() -> None:
     parser.add_argument("--max", type=int, default=1500, help="Max characters per text output")
     args = parser.parse_args()
     if not args.notebook.endswith(".ipynb"):
-        sys.exit(__doc__)
+        parser.error(f"Expected a .ipynb file, got: {args.notebook}")
     print(summarize_notebook(args.notebook, show_code=args.code, limit=args.max))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
     main()

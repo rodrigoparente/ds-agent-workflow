@@ -111,6 +111,17 @@
     },
     {
       "type": "content",
+      "title": "Key Production Metrics at a Glance",
+      "stats": [
+        {"value": "89.1%", "label": "Held-out accuracy", "delta": "+8.0 pts vs. prod"},
+        {"value": "86.0%", "label": "Short-title accuracy (1-3 words)", "delta": "+18.0 pts lift"},
+        {"value": "38 ms", "label": "CPU p95 inference latency", "delta": "12 ms below SLA"}
+      ],
+      "source": "Held-out test set (n = 20,000), single-CPU benchmark",
+      "notes": "To summarize the three headline numbers: overall accuracy reaches 89.1%, short one-to-three-word titles jump to 86.0%, and p95 latency stays at 38 milliseconds on CPU—well within our 50-millisecond budget."
+    },
+    {
+      "type": "content",
       "title": "Single-Modality vs. Multimodal Benchmark",
       "bars": [
         {"label": "Image + title (multimodal)", "value": 89.1, "display": "89.1%", "highlight": true},

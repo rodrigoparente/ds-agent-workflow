@@ -412,13 +412,13 @@ def evidence(s, d, base):
 
 # --- Deck ---
 TITLES = {"tldr": "TL;DR", "conclusion": "Conclusion", "agenda": "Agenda", "thanks": "Thank you"}
+VALID_TYPES = {"tldr", "agenda", "section", "content", "conclusion", "thanks"}
 SECTION_NUM_RE = re.compile(r"^(?:section\s*)?\d+[\.\)\-:\s]+", re.I)
 ALLOWED_COMBOS = ({"image", "bullets"}, {"code", "bullets"})
 LIMITS = {
     "stats": (4, "stats"),
     "flow": (5, "steps"),
     "compare": (3, "columns"),
-    "grid": (6, "cards"),
     "timeline": (5, "steps"),
     "bars": (8, "bars"),
 }
@@ -455,24 +455,34 @@ def _check_layout_limits(name, d, base):
     for key, (limit, unit) in LIMITS.items():
         if len(d.get(key, [])) > limit:
             print(f"WARNING {name}: more than {limit} {unit}")
-    if "images" in d and not (1 <= len(d["images"]) <= 2):
-        print(f"WARNING {name}: images supports 1 or 2 figures")
+    if "grid" in d and len(d["grid"]) not in {2, 3, 4, 6}:
+        print(f"WARNING {name}: grid expects 2, 3, 4, or 6 cards")
+    if "images" in d and len(d["images"]) != 2:
+        print(f"WARNING {name}: images expects 2 figures (use image for 1)")
     if "code" in d:
         _check_code(name, d)
     if base is not None:
         _check_image_paths(name, d, base)
 
 
+def _check_slide_meta(name, d):
+    if d.get("type") not in VALID_TYPES:
+        print(f"WARNING {name}: unknown slide type {d.get('type')!r}")
+    if not d.get("notes"):
+        print(f"WARNING {name}: no presenter notes")
+    if len(d.get("title", "")) > 80:
+        print(f"WARNING {name}: title is long")
+    if len(d.get("bullets", [])) > 5:
+        print(f"WARNING {name}: more than 5 bullets")
+
+
 def check(spec, base=None):
     """Warn when a slide drifts from the rules: one idea, one piece of evidence, notes."""
+    if not spec.get("notes"):
+        print("WARNING slide 1 (title): no presenter notes")
     for n, d in enumerate(spec["slides"], 2):
-        name = f"slide {n} ({d.get('title') or d['type']})"
-        if not d.get("notes"):
-            print(f"WARNING {name}: no presenter notes")
-        if len(d.get("title", "")) > 80:
-            print(f"WARNING {name}: title is long")
-        if len(d.get("bullets", [])) > 5:
-            print(f"WARNING {name}: more than 5 bullets")
+        name = f"slide {n} ({d.get('title') or d.get('type', 'unknown')})"
+        _check_slide_meta(name, d)
         kinds = {k for k in RENDERERS if k in d}
         if len(kinds) > 1 and kinds not in ALLOWED_COMBOS:
             print(f"WARNING {name}: more than one kind of evidence {sorted(kinds)}")
