@@ -28,7 +28,7 @@ ROOT = next(
 DATA = ROOT / "data"
 MODELS = ROOT / "models"
 FIGURES = ROOT / "docs" / "figures"
-REFRESH_DATA = False  # set True when ## Data & Inputs changes in an iteration
+REFRESH_DATA = False  # set True when ## Inputs & Context changes in an iteration
 SEED = 42
 # Parameters, only if the spec lists some. Example:
 # SAMPLE_FRAC = 1.0

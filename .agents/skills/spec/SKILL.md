@@ -1,34 +1,31 @@
 ---
 name: spec
-description: Draft and agree on a spec before writing code—for EDA, models, pipelines, apps, APIs, or prototypes. Triggers whenever the user wants to analyze, build, test, or change something.
+description: Draft, refine, or fast-forward a spec before writing code, and keep living project context synced. Triggers whenever the user wants to explore, build, test, or change something.
 ---
 
 # Spec
 
-Captures what we are doing, what data is involved, and what will be produced before any code is written. Exploratory analyses, pipelines, and prototypes without formal metrics are first-class citizens.
+Aligns on what we are doing, what inputs and rules apply, and how correctness will be verified before writing code. Exploratory analyses, pipelines, and prototypes without formal metrics are first-class citizens.
 
 ## Process
 
-1. **Context & output check:**
-   List `specs/` to find the next sequential number (`NN` = highest existing number + 1, starting with `01`).
-   If continuing or debugging previous work, read the relevant `specs/<NN-name>.md`, its code (`notebooks/py/<NN-name>.py`, `scripts/`, or `apps/`), and—for notebooks—inspect executed outputs with `python3 .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb`.
-2. **Clarify scope & route deliverables:**
-   The user does not need to know folder conventions (`specs/`, `models/`, `apps/`, `scripts/`, `tests/`), initiative names (`01-name`), or exact evaluation mechanics. When a prompt is open-ended:
-   - Propose 2–3 concrete, opinionated options (scope, evaluation, baseline, or approach) via `ask_question` / `AskUserQuestion`.
-   - Propose a clean kebab-case initiative name (e.g., `01-sales-eda`, `02-baseline-model`) and route deliverables to the right folder.
-3. **Draft the spec (`Status: draft`):**
-   Copy `assets/spec-template.md` to `specs/<NN-name>.md` and fill in every section (including sources, deduplication, filters, transforms, joins, and any defaults under `## Assumptions (confirm)`). Always set `Status: draft` when creating or revising a spec.
-4. **Approve before coding (`Status: approved` — HARD GATE):**
-   - Share a concise summary and link to `specs/<NN-name>.md` (highlighting data inputs, approach, deliverable, and any remaining assumptions/trade-offs), then ask for explicit approval via `ask_question` / `AskUserQuestion` (e.g., `(Recommended) Approve spec and implement code` vs. `Make changes`).
-   - Answering clarifying/assumption questions or requesting any change to the spec is a revision—not approval to code. Update `specs/<NN-name>.md` (keep `Status: draft`), re-summarize, and wait for explicit approval.
-   - Do **not** set `Status: approved` or create/edit code (`notebooks/`, `scripts/`, `apps/`, `tests/`) until the user explicitly approves the latest written spec with no pending edits or unanswered questions.
+1. **Check context & reality first:**
+   List `specs/` to find the next sequential `NN-` prefix (starting with `01`). Read `specs/context.md` (if present) and any relevant prior specs, code, or outputs (`python3 .agents/tools/nb_summary.py notebooks/<NN-name>.ipynb` for notebooks, or logs/summaries in `data/`). Inspect schemas, headers, or small samples in `data/` rather than guessing what can be checked directly.
+2. **Brainstorm when open-ended:**
+   If goals, scope, or trade-offs are unclear, do **not** create `specs/<NN-name>.md` yet. Ask 1–2 focused questions at a time (offering 2–3 concrete options via `ask_question` / `AskUserQuestion`, recommended first) until direction is clear. Adapt naturally to the work—key questions and cohorts for exploration, baseline and evaluation setup for experiments, interfaces and edge cases for pipelines/apps/modules.
+3. **Write or update `specs/<NN-name>.md`:**
+   Copy `assets/spec-template.md` and fill each relevant section concisely:
+   - Size `## Approach & Tasks` to complexity (flat steps for single-file work; explicit file/module breakdown for multi-file builds).
+   - Define concrete checks in `## Verification` (runtime assertions/invariants, unit tests, or expected outputs/logs).
+   - List any `## Context Deltas` (`[ADD]`, `[MODIFY]`, `[REMOVE]`) to fold into `specs/context.md` once verified, and isolate unconfirmed choices under `## Assumptions (confirm)`.
+4. **Match ceremony to ambiguity (Draft vs. Fast-Forward):**
+   - **Draft & confirm (`Status: draft`):** Use for new initiatives or changes with open trade-offs or `## Assumptions (confirm)`. Share a concise summary and link to `specs/<NN-name>.md`, then ask for explicit approval via `ask_question` / `AskUserQuestion` before creating/editing code. Answering clarifying questions or requesting spec edits is a revision—update the draft and re-confirm.
+   - **Fast-forward (`Status: approved`):** Use for clear, unambiguous updates or fixes on an existing spec with zero open assumptions—or when the user explicitly asks to fast-forward or implement directly. Update `specs/<NN-name>.md` first (log `- *[vN]:* ...` under `## Updates`, set `Status: approved`) and proceed straight to code in the same turn.
+5. **Sync living truth (`specs/context.md`):**
+   Once work is verified/executed (via `experiment-report`, test/log verification, or user confirmation), set `Status: executed` and fold confirmed `## Context Deltas` into `specs/context.md` (create lazily; keep concise and edit in place as a current snapshot of schemas, domain rules/quirks, shared modules, and baselines—not a changelog).
 
 ## Iterating vs. New Specs
 
-- **Iterating on an existing initiative (`<NN-name>`):** Use this for bug fixes, filter/feature tweaks, or follow-up steps on the *same* initiative—even if `Status` was `executed`. Update `specs/<NN-name>.md` *before* touching code, append `- *[v2 - Summary]:* ...` under `## Updates`, set `Status: draft`, link any research via `Research: docs/research/<name>.md`, and note `REFRESH_DATA = True` if `## Data & Inputs` changed. Follow Step 4 before flipping to `Status: approved` and editing code.
-- **Starting a new initiative (`<(NN+1)-name>`):** Use this for a new phase, distinct modeling approach, separate question, or operationalizing prior work into `scripts/` or `apps/`. Create `specs/<(NN+1)-name>.md` with `Builds on: <NN-name>` and reference reused data, `models/`, or `scripts/`.
-- **Cross-initiative feedback (`<(NN+1)-name>` → `<NN-name>`):** When downstream work exposes an upstream bug or missing requirement, update the upstream spec and code first, then update the downstream spec and code.
-
-## Spec Lifecycle
-
-`Status: draft` (drafting) → `Status: approved` (ready for code / has unexecuted updates) → `Status: executed` (run complete and summarized in `docs/reports/<NN-name>.md`).
+- **Same initiative (`<NN-name>`):** Refinements, bug fixes, or follow-up tweaks (note `REFRESH_DATA = True` if cached inputs changed).
+- **New initiative (`<(NN+1)-name>`):** Distinct phase, new approach, or operationalizing exploratory work into `scripts/` or `apps/` (`Builds on: <NN-name>`).
+- **Upstream fix (`<(NN+1)-name>` → `<NN-name>`):** Fix the upstream spec and code first when downstream work exposes an upstream bug.

@@ -58,6 +58,23 @@ def _toolchain_warnings(root: Path) -> list[str]:
     return warnings
 
 
+def _specs_summary_line(root: Path) -> str:
+    """Build the numbered specs + living context summary line."""
+    specs_dir = root / "specs"
+    spec_files = sorted(specs_dir.glob("*.md")) if specs_dir.exists() else []
+    highest_num = 0
+    spec_items: list[str] = []
+    for sp in spec_files:
+        if m := re.match(r"^(\d+)-", sp.stem):
+            highest_num = max(highest_num, int(m.group(1)))
+            spec_items.append(f"{sp.stem} ({_read_spec_status(sp)})")
+
+    next_nn = f"{highest_num + 1:02d}"
+    specs_text = " · ".join(spec_items[-10:]) if spec_items else "none yet"
+    ctx_part = " | Context: `specs/context.md`" if (specs_dir / "context.md").is_file() else ""
+    return f"Specs: {specs_text}{ctx_part} | Next initiative prefix: `{next_nn}-`"
+
+
 def build_context_summary(root: Path) -> str:
     """Build a compact workspace status summary."""
     lines: list[str] = []
@@ -68,18 +85,7 @@ def build_context_summary(root: Path) -> str:
         dirty = len([ln for ln in status_out.splitlines() if ln.strip()])
         lines.append(f"Git: branch `{branch}` ({dirty} uncommitted file(s))")
 
-    specs_dir = root / "specs"
-    spec_files = sorted(specs_dir.glob("*.md")) if specs_dir.exists() else []
-    highest_num = 0
-    spec_items: list[str] = []
-    for sp in spec_files:
-        if m := re.match(r"^(\d+)-", sp.stem):
-            highest_num = max(highest_num, int(m.group(1)))
-        spec_items.append(f"{sp.stem} ({_read_spec_status(sp)})")
-
-    next_nn = f"{highest_num + 1:02d}"
-    specs_text = " · ".join(spec_items[-10:]) if spec_items else "none yet"
-    lines.append(f"Specs: {specs_text} | Next initiative prefix: `{next_nn}-`")
+    lines.append(_specs_summary_line(root))
     lines.extend(_toolchain_warnings(root))
     return "\n".join(lines)
 

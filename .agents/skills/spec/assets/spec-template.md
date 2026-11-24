@@ -5,30 +5,28 @@ Builds on: <NN-name> (optional, delete if none)
 Research: docs/research/<name>.md (optional, delete if none)
 
 ## Overview
-What we are exploring, analyzing, or building. Clear, concise description without requiring artificial goals or metrics.
+What we are exploring, building, or changing, and why. (Exploratory work needs clear questions, not artificial metrics.)
 
-## Data & Inputs
-Source tables, datasets, files, artifacts, or parameters.
-Clearly document the data management process:
-- Sources & join keys: ...
-- Deduplication & filters: ...
-- Transformations & preprocessing: ...
+## Inputs & Context
+Relevant data sources, schemas, logs, parameters, or existing modules/artifacts (plus filters, joins, or key rules).
 
-## Approach
-Steps to take:
+## Approach & Tasks
+Ordered steps to take (for multi-file work, name target files/modules):
 1. ...
 2. ...
 
+## Verification
+Concrete checks to verify correctness (e.g., data/schema invariants, automated tests, or expected outputs/logs):
+- [ ] ...
+
 ## Deliverable
-- Notebook (`notebooks/py/<NN-name>.py` → `notebooks/<NN-name>.ipynb`), script (`scripts/<name>.py`), or application (`apps/<name>.py`).
-- Optional artifacts: saved models (`models/`), shared modules (`scripts/`), tests (`tests/`), or figures (`docs/figures/<NN-name>_*.png`).
+Expected code, artifacts, figures, or outputs produced.
+
+## Context Deltas (optional)
+Confirmed truths to fold into `specs/context.md` once executed (`[ADD]`, `[MODIFY]`, `[REMOVE]`—schemas, domain rules/quirks, shared modules, baselines).
 
 ## Assumptions (confirm)
-- Choices or defaults to confirm with the user. (Remove once confirmed).
-
-## Done When
-- [ ] Key criteria for completion (or: open-ended exploration / user confirms satisfied).
+- Open choices or defaults to confirm before coding. (Delete once resolved.)
 
 ## Updates (if revisited)
-- *[v1 - Initial Spec]:* ...
-- *[v2 - Update]:* What changed and why (note `REFRESH_DATA = True` if data inputs changed).
+- *[v1]:* Initial spec.

@@ -36,8 +36,6 @@
       "Read(**/.env)",
       "Read(**/.env.*)",
       "Read(~/.ssh/**)",
-      "Read(./data/**)",
-      "Read(data/**)",
       "Read(notebooks/*.ipynb)",
       "Read(./notebooks/*.ipynb)",
       "Edit(notebooks/*.ipynb)",

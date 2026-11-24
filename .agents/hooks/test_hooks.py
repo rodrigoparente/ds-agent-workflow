@@ -209,8 +209,15 @@ def test_session_start_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     summary = session_start.build_context_summary(tmp_path)
     assert "01-eda (executed)" in summary
     assert "02-baseline (approved)" in summary
+    assert "Context:" not in summary
     assert "`03-`" in summary
     assert "Warning:" not in summary
+
+    (specs / "context.md").write_text("# Project Context\n")
+    summary_with_ctx = session_start.build_context_summary(tmp_path)
+    assert "context (unknown)" not in summary_with_ctx
+    assert "Context: `specs/context.md`" in summary_with_ctx
+    assert "`03-`" in summary_with_ctx
 
 
 def test_session_start_warns_when_toolchain_missing(
@@ -634,6 +641,9 @@ def test_claude_settings_has_no_write_deny_rules() -> None:
     data = json.loads(settings_path.read_text(encoding="utf-8"))
     deny_rules = data["permissions"]["deny"]
     assert not any(rule.startswith("Write(") for rule in deny_rules)
+    assert "Read(data/**)" not in deny_rules
+    assert "Read(./data/**)" not in deny_rules
+    assert "Read(**/.env)" in deny_rules
     assert "Edit(notebooks/*.ipynb)" in deny_rules
     assert "Edit(./notebooks/*.ipynb)" in deny_rules
 
