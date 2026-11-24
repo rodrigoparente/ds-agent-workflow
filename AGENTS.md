@@ -2,11 +2,12 @@
 
 ## Workflow
 
-Human-in-the-loop lifecycle: **Research (optional) → Spec → Code → Run (User) → Report → Presentation**. Detailed procedures live in `.agents/skills/`.
+Human-in-the-loop lifecycle: **Research (optional) → Spec → Code → Run (User) → Report → Presentation** (`.agents/skills/`):
 
-- **Spec first (proportional ceremony):** Keep specs (`specs/<NN-name>.md`: `draft → approved → executed`) and living context (`specs/context.md`) synced via `spec`. Wait for explicit approval on drafts before coding; fast-forward unambiguous tweaks in one turn. Exploratory work without formal metrics is first-class.
+- **Route by intent:** Conceptual, method, or literature understanding uses `research` (`docs/research/<name>.md`); empirical data exploration, experiments, pipelines, scripts, and apps go through `spec` → `code`; post-run write-ups use `report`; slide decks use `presentation`.
+- **Spec first & iterate in place:** Keep specs (`specs/<NN-name>.md`: `draft`, `approved`, `executed`) and living context (`specs/context.md`) synced via `spec`. Extend the active `<NN-name>` initiative in place (even after execution) when adding or comparing models, features, metrics, or fixes on the same setup; start `<(NN+1)-name>` only when the goal, dataset/design, or deliverable shifts. Pause for plain-text approval on `draft` specs; fast-forward clear, unambiguous follow-ups on an existing spec straight to `code` in one turn.
 - **Start simple & stay transparent:** Build the simplest flat solution first using Python stdlib, pandas, numpy, and scikit-learn built-ins; isolate unconfirmed defaults in the spec.
-- **Interactive, one step at a time:** Use your structured question tool (`ask_question` / `AskUserQuestion`, recommended option first) for open scope or trade-offs—not routine "what next?" prompts. Summarize concisely with file links and wait for the user.
+- **Natural interaction:** Use your structured question tool (`ask_question` / `AskUserQuestion`, recommended option first) only to clarify genuine open choices or missing scope—never for yes/no confirmations, approvals, or "what next?" prompts (handle those in plain text). Answering clarifying questions shapes a draft; wait for confirmation of the written draft before coding.
 
 ## Repository Layout
 

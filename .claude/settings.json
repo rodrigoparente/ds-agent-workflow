@@ -1,48 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "allow": [
-      "Bash(python3 .agents/tools/check_notebook.py *)",
-      "Bash(python3 .agents/tools/nb_summary.py *)",
-      "Bash(uv run python .agents/tools/export_docx.py *)",
-      "Bash(python3 .agents/skills/research/scripts/papers.py *)",
-      "Bash(uv run python .agents/skills/presentation/scripts/deck.py *)",
-      "Bash(uv run pytest)",
-      "Bash(uv run pytest *)",
-      "Bash(uv run --no-sync pytest)",
-      "Bash(uv run --no-sync pytest *)",
-      "Bash(uv run ruff *)",
-      "Bash(uv run --no-sync ruff *)",
-      "Bash(soffice *)",
-      "Bash(pdftoppm *)",
-      "Bash(git status)",
-      "Bash(git status *)",
-      "Bash(git diff)",
-      "Bash(git diff *)",
-      "Bash(git log)",
-      "Bash(git log *)",
-      "WebSearch",
-      "WebFetch"
-    ],
-    "ask": [
-      "Bash(git push *)",
-      "Bash(git commit *)",
-      "Bash(uv add *)",
-      "Bash(uv remove *)",
-      "Bash(uv sync)",
-      "Bash(uv sync *)"
-    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.*)",
       "Read(~/.ssh/**)",
       "Read(notebooks/*.ipynb)",
-      "Read(./notebooks/*.ipynb)",
-      "Edit(notebooks/*.ipynb)",
-      "Edit(./notebooks/*.ipynb)",
-      "Bash(rm -rf *)",
-      "Bash(git push --force *)",
-      "Bash(git reset --hard *)"
+      "Edit(notebooks/*.ipynb)"
     ]
   },
   "hooks": {

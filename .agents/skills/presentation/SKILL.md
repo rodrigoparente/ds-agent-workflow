@@ -28,26 +28,25 @@ Use your structured question tool to collect only what the user hasn't already s
 2. **Audience, goal & setting:** who is listening, what they should understand or decide, target duration (~1 slide per 1–2 minutes), and technical depth.
 3. **Language & deck name:** match the source language unless told otherwise; ask what to name the deck (`docs/presentations/<name>/`, don't auto-name).
 
-## 3. Outline & approval (HARD GATE)
+## 3. Outline & confirmation
 
 Read `references/story.md` before structuring slides.
 
-- **`auto` mode:** Draft the full section arc and numbered slide outline yourself, then stop at the approval gate below.
+- **`auto` mode:** Draft the full section arc and numbered slide outline yourself, then confirm the outline below.
 - **`guided` mode:** Present a compact, scannable brief of everything available to work with—grouped into:
   - **Core findings & metrics** (headline numbers, benchmarks, tables)
   - **Context & approach** (problem framing, pipeline/architecture, key trade-offs)
   - **Available figures** (`docs/figures/` paths with 1-line descriptions)
   - **Code highlights** (bugs, refactors, or key snippets, if relevant)
   - **Caveats & next steps**
-  Ask the user for their outline in plain language (without worrying about renderers or layouts). Adjust and polish their outline into clean sections, concise informative titles, and chosen layouts/renderers, then present the refined outline and stop at the approval gate below.
+  Ask the user for their outline in plain language (without worrying about renderers or layouts). Adjust and polish their outline into clean sections, concise informative titles, and chosen layouts/renderers, then present the refined outline and confirm the outline below.
 
-**Outline format & approval gate (both modes):**
+**Outline format & confirmation (both modes):**
 
 - Show the complete numbered slide-by-slide outline:
   `Slide # · Title (informative topic label) · Layout/evidence (and figure path if used) · Brief focus`
-- Ask for explicit approval via your structured question tool (`(Recommended) Approve outline and build deck` vs. `Make changes`).
-- **Any request to add, remove, reorder, or edit slides is a revision—NOT approval.** Update and show the revised outline, then **STOP again** for explicit approval.
-- **Do NOT create `slides.json` or run `deck.py` until the latest outline is explicitly approved with no pending edits.**
+- Share the outline in plain text (do not open a question dialog for approval) and wait for confirmation before creating `slides.json` or running `deck.py`.
+- Requests to add, remove, reorder, or edit slides update the outline; share the revised outline and confirm in plain text before building.
 
 ## 4. Build
 
@@ -71,8 +70,6 @@ First check the rendered slides yourself: convert to images (`soffice --headless
 
 Share the `.pptx` path with the user and review it together: apply any requested edits to `slides.json`, rebuild, and repeat until approved.
 
-## 6. Export and stop
+## 6. Deliver & optional PDF
 
-Ask which format to deliver via your structured question tool: **pptx**, **pdf**, or **both**. PDF: `soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`. Keep only the chosen files next to `slides.json`.
-
-Tell the user the output paths and stop. Do not start anything else.
+Share `docs/presentations/<name>/<name>.pptx` in plain text, mention that a PDF export is available on request (`soffice --headless --convert-to pdf --outdir docs/presentations/<name> docs/presentations/<name>/<name>.pptx`), and stop. Export `.pdf` immediately if the user already asked for PDF.

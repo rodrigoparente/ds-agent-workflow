@@ -1,6 +1,6 @@
 ---
 name: research
-description: Interview the user, research via web search (`quick`) or web plus Semantic Scholar and arXiv (`deep`), and write a cited storyline brief to docs/research/<name>.md. Use when the user wants to understand or learn a topic in depth, not for simple lookups.
+description: Explore concepts, methods, tools, or domain topics and write a cited storyline brief to docs/research/<name>.md (via `quick` web search or `deep` web + Semantic Scholar/arXiv). Use whenever the user wants to learn about, understand, or know more about a subject or technique—rather than analyzing project data, changing code, or checking a quick CLI/API syntax detail.
 ---
 
 # Research
@@ -14,13 +14,13 @@ Two modes (the user chooses):
 | `quick` | Web search + reading pages | Minutes |
 | `deep` | Web + academic papers (arXiv, Semantic Scholar) | Takes longer; fuller storyline |
 
-Output language: English by default (or match the user's requested language).
+Output language: match the user's language unless requested otherwise.
 
 ## 1. Interview (adaptive)
 
 The user often doesn't know what they want, or doesn't know the terms. Do not research until the goal is clear.
 
-- Use your structured question tool with selectable options (1-3 questions per round; keep going until the goal is clear).
+- Use your structured question tool with selectable options (recommended first; aim for a single short round of 1–3 questions, skipping anything already stated).
 - Find out, in this order, skipping whatever the user already said:
   1. **Topic:** what do they want to understand, and what triggered it?
   2. **Purpose:** what will they do with it (learn, decide, build, write, teach)?
@@ -30,7 +30,7 @@ The user often doesn't know what they want, or doesn't know the terms. Do not re
 - Never invent the goal or the question. If something is missing, ask or offer options.
 - **Scope handoff:**
   - **`quick`:** Restate the understanding (topic, focus, and proposed `docs/research/<suggested-name>.md`) in 2-3 lines and start researching immediately (no approval gate).
-  - **`deep`:** Share a 3-4 line scope recap (core questions to answer, subtopics, and proposed `docs/research/<suggested-name>.md`, inviting a rename if desired) and **STOP for a quick user confirmation** before launching the 20+ source deep dive.
+  - **`deep`:** Share a 3-4 line scope recap (core questions to answer, subtopics, and proposed `docs/research/<suggested-name>.md`, inviting a rename if desired) and wait for confirmation in plain text before launching the 20+ source deep dive.
 
 ## 2. Research
 

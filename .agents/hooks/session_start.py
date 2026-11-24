@@ -72,7 +72,7 @@ def _specs_summary_line(root: Path) -> str:
     next_nn = f"{highest_num + 1:02d}"
     specs_text = " · ".join(spec_items[-10:]) if spec_items else "none yet"
     ctx_part = " | Context: `specs/context.md`" if (specs_dir / "context.md").is_file() else ""
-    return f"Specs: {specs_text}{ctx_part} | Next initiative prefix: `{next_nn}-`"
+    return f"Specs: {specs_text}{ctx_part} | Next unused prefix: `{next_nn}-`"
 
 
 def build_context_summary(root: Path) -> str:
