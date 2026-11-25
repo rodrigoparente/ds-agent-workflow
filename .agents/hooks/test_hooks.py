@@ -118,9 +118,7 @@ def test_lint_routing_and_early_stop(tmp_path: Path, monkeypatch: pytest.MonkeyP
     class Res:
         returncode, stdout, stderr = 0, "", ""
 
-    monkeypatch.setattr(
-        lint, "run_project_tool", lambda _r, *a, **_kw: calls.append(a) or Res()
-    )
+    monkeypatch.setattr(lint, "run_project_tool", lambda _r, *a, **_kw: calls.append(a) or Res())
     err0 = lint.check_edited_file(common.HookContext("claude", tmp_path, "scripts/helpers.py"))
     assert err0 == ""
     assert [c[:2] for c in calls] == [("ruff", "format"), ("ruff", "check")]
@@ -193,6 +191,21 @@ def test_stop_tests_routing_and_antigravity_lint(
     monkeypatch.setattr(stop_tests, "run_project_tool", lambda _r, *a, **_kw: FakeRun(0))
     agy_ok = stop_tests.check_tests_on_stop(common.HookContext("antigravity", tmp_path))
     assert agy_ok == (False, "")
+
+
+def test_stop_tests_reports_timeout_and_missing_pytest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*_a: object, **_kw: object) -> None:
+        raise stop_tests.subprocess.TimeoutExpired("pytest", 1)
+
+    monkeypatch.setattr(stop_tests, "run_project_tool", boom)
+    cont, reason = stop_tests._run_pytest(tmp_path, ["tests"])
+    assert cont is True and "timed out" in reason
+
+    monkeypatch.setattr(stop_tests, "run_project_tool", lambda *_a, **_kw: None)
+    cont, reason = stop_tests._run_pytest(tmp_path, ["tests"])
+    assert cont is True and "uv sync" in reason
 
 
 def test_check_notebook_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -21,7 +21,10 @@ Aligns on what we are doing, what inputs and rules apply, and how correctness wi
    - Concrete checks in `## Verification` (runtime assertions/invariants, unit tests, or expected outputs/logs).
    - Confirmed truth updates under `## Context Deltas` (`[ADD]`, `[MODIFY]`, `[REMOVE]`) and any open defaults under `## Assumptions (confirm)`.
 4. **Confirm or fast-forward:**
-   - **Draft & confirm (`Status: draft`):** Use for new initiatives or updates with open trade-offs or `## Assumptions (confirm)`. Share a concise summary and link to `specs/<NN-name>.md` in **plain text** (do not open a question dialog for approval) and wait for the user's go-ahead in chat. If the user answers an assumption or requests edits without asking to implement yet, update the `draft` and confirm in plain text; move to `Status: approved` and `code` only once confirmed.
+   - **Draft & confirm (`Status: draft`):** Use for new initiatives or updates with open trade-offs or `## Assumptions (confirm)`.
+     - Share a concise summary and link to `specs/<NN-name>.md` in **plain text** (no question dialog for approval) and wait for the user's go-ahead.
+     - If the user answers an assumption or asks for edits without asking to implement, update the `draft` and confirm again in plain text.
+     - Move to `Status: approved` and `code` only once confirmed.
    - **Fast-forward (`Status: approved`):** Use for clear, well-specified follow-ups on an existing `<NN-name>` spec with zero open assumptions (e.g., adding a specified model or metric comparison on an existing split), or when the user explicitly asks to implement directly. Update `specs/<NN-name>.md` first (log `- *[vN]:* ...` under `## Updates`, set `Status: approved`) and proceed straight to `code` in the same turn.
 5. **Sync living truth (`specs/context.md`):**
    Once work is verified/executed (via `report`, test/log verification, or user confirmation), set `Status: executed` and fold confirmed `## Context Deltas` into `specs/context.md` (create lazily; keep concise and edit in place as a current snapshot of schemas, domain rules/quirks, shared modules, and baselines—not a changelog).

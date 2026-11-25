@@ -257,7 +257,16 @@ def callout(s, item, x, y, w):
     box(s, x, cy, 0.12, lh, BLUE)
     v_size = 40 if len(item["value"]) > 7 else 54
     textbox(
-        s, x + 0.2, cy + 0.65, lw - 0.3, 1.5, item["value"], v_size, BLUE, True, CENTER,
+        s,
+        x + 0.2,
+        cy + 0.65,
+        lw - 0.3,
+        1.5,
+        item["value"],
+        v_size,
+        BLUE,
+        True,
+        CENTER,
         MSO_ANCHOR.MIDDLE,
     )
     textbox(s, x + 0.3, cy + 2.3, lw - 0.5, 1.4, item.get("label", ""), 18, TEXT, align=CENTER)

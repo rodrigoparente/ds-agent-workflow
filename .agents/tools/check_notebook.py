@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents" / "hooks"))
 from common import run_project_tool, run_ruff  # noqa: E402
 
-# Keep these thresholds in sync with .agents/skills/code/SKILL.md
+# Single source of truth for notebook size limits (code/SKILL.md points here).
 MAX_LINES = 220
 MAX_CELL = 35
 MAX_DEF_LINES = 15

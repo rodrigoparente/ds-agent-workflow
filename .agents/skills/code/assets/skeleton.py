@@ -47,6 +47,7 @@ if path.exists() and not REFRESH_DATA:
 else:
     # Replace with source query or file read (e.g. pd.read_csv(DATA / "raw.csv"))
     df = pd.DataFrame()
+    assert not df.empty, "Replace the placeholder above with a real data load"
     DATA.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path)
 print(df.shape)

@@ -18,6 +18,8 @@ from common import (
 )
 from lint import check_edited_file
 
+PYTEST_TIMEOUT = 120  # keep below the Stop hook timeout in settings.json / hooks.json
+
 
 def _changed_python_paths(root: Path) -> list[str]:
     out = git_stdout(root, "status", "--porcelain", "-uall")
@@ -73,10 +75,15 @@ def _skip_stop(ctx: HookContext) -> bool:
 
 def _run_pytest(root: Path, targets: list[str]) -> tuple[bool, str]:
     try:
-        r = run_project_tool(root, "pytest", "-x", "-q", *targets, timeout=120)
+        r = run_project_tool(root, "pytest", "-x", "-q", *targets, timeout=PYTEST_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return (False, "")
-    if r is not None and r.returncode != 0:
+        return (
+            True,
+            f"Unit tests timed out after {PYTEST_TIMEOUT}s. Tell the user instead of retrying.",
+        )
+    if r is None:
+        return (True, "pytest is not installed. Tell the user to run `uv sync`.")
+    if r.returncode != 0:
         tail = "\n".join((r.stdout + "\n" + r.stderr).strip().splitlines()[-30:])
         return (True, f"Unit tests failed. Please fix them before finishing:\n{tail}")
     return (False, "")

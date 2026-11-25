@@ -8,7 +8,6 @@ Outputs are truncated to --max characters each; images and rich media are listed
 import argparse
 import json
 import re
-import sys
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 
