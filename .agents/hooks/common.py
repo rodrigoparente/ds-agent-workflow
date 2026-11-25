@@ -20,6 +20,7 @@ class HookContext:
     file_path: str = ""
     stop_active: bool = False
     termination_reason: str = ""
+    command: str = ""  # Bash command (Claude Code PreToolUse only)
 
     def rel_path(self) -> str:
         """Return project-relative forward-slash path, or empty string."""
@@ -103,6 +104,7 @@ def parse_payload(stream: Any = None) -> HookContext:
         root=root,
         file_path=_extract_path(data.get("tool_input"), "file_path", "notebook_path", "path"),
         stop_active=bool(data.get("stop_hook_active", False)),
+        command=_extract_path(data.get("tool_input"), "command"),
     )
 
 

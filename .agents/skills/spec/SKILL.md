@@ -20,11 +20,11 @@ Aligns on what we are doing, what inputs and rules apply, and how correctness wi
    - Flat steps in `## Approach & Tasks` for single-file work; file/module breakdown for multi-file builds.
    - Concrete checks in `## Verification` (runtime assertions/invariants, unit tests, or expected outputs/logs).
    - Confirmed truth updates under `## Context Deltas` (`[ADD]`, `[MODIFY]`, `[REMOVE]`) and any open defaults under `## Assumptions (confirm)`.
-4. **Confirm or fast-forward:**
+4. **Confirm or fast-forward (both end by handing control to the user):**
    - **Draft & confirm (`Status: draft`):** Use for new initiatives or updates with open trade-offs or `## Assumptions (confirm)`.
      - Share a concise summary and link to `specs/<NN-name>.md` in **plain text** (no question dialog for approval) and wait for the user's go-ahead.
      - If the user answers an assumption or asks for edits without asking to implement, update the `draft` and confirm again in plain text.
      - Move to `Status: approved` and `code` only once confirmed.
-   - **Fast-forward (`Status: approved`):** Use for clear, well-specified follow-ups on an existing `<NN-name>` spec with zero open assumptions (e.g., adding a specified model or metric comparison on an existing split), or when the user explicitly asks to implement directly. Update `specs/<NN-name>.md` first (log `- *[vN]:* ...` under `## Updates`, set `Status: approved`) and proceed straight to `code` in the same turn.
+   - **Fast-forward (`Status: approved`):** Use for clear, well-specified follow-ups on an existing `<NN-name>` spec with zero open assumptions (e.g., adding a specified model or metric comparison on an existing split). Update `specs/<NN-name>.md` first (log `- *[vN]:* ...` under `## Updates`, set `Status: approved`), share a one-line summary in plain text, and **stop**. The user triggers `code`.
 5. **Sync living truth (`specs/context.md`):**
    Once work is verified/executed (via `report`, test/log verification, or user confirmation), set `Status: executed` and fold confirmed `## Context Deltas` into `specs/context.md` (create lazily; keep concise and edit in place as a current snapshot of schemas, domain rules/quirks, shared modules, and baselines—not a changelog).

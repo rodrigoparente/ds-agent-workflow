@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / ".agents" / "skills" / "presentation" / "scripts")
 import check_notebook  # noqa: E402
 import common  # noqa: E402
 import export_docx  # noqa: E402
+import guard  # noqa: E402
 import lint  # noqa: E402
 import nb_summary  # noqa: E402
 import papers  # noqa: E402
@@ -206,6 +207,29 @@ def test_stop_tests_reports_timeout_and_missing_pytest(
     monkeypatch.setattr(stop_tests, "run_project_tool", lambda *_a, **_kw: None)
     cont, reason = stop_tests._run_pytest(tmp_path, ["tests"])
     assert cont is True and "uv sync" in reason
+
+
+@pytest.mark.parametrize(
+    ("command", "blocked"),
+    [
+        ("cat .env", True),
+        ("grep KEY ./config/.env.local", True),
+        ("cat ~/.ssh/id_ed25519", True),
+        ("head -50 notebooks/01-eda.ipynb", True),
+        ("cat .env.example", False),
+        ("source .venv/bin/activate", False),
+        ("python3 .agents/tools/nb_summary.py notebooks/01-eda.ipynb", False),
+        ("git add notebooks/01-eda.ipynb", False),
+        ("uv run pytest -x -q", False),
+    ],
+)
+def test_guard_blocks_secrets_and_raw_notebooks(command: str, blocked: bool) -> None:
+    assert bool(guard.check_command(command)) is blocked
+
+
+def test_parse_payload_exposes_bash_command() -> None:
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+    assert common.parse_payload(io.StringIO(payload)).command == "ls"
 
 
 def test_check_notebook_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
