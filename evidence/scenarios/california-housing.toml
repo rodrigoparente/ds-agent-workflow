@@ -1,0 +1,10 @@
+# Tabular regression, all-numeric features, Streamlit deployment.
+name = "california-housing"
+problem = "predict the median house value of a California census block group from its attributes."
+data_source = "the California housing dataset (`sklearn.datasets.fetch_california_housing` with `as_frame=True`)"
+target = "MedHouseVal"
+metric = "RMSE (with MAE reported alongside)"
+baseline = "predicting the training median, then a linear regression"
+app = "a Streamlit app where I enter the block group attributes and get the predicted median house value"
+audience = "a real estate investment team"
+deck_name = "california-housing-findings"

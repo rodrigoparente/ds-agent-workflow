@@ -18,6 +18,12 @@ $$\textbf{Research} \longrightarrow \textbf{Spec} \longrightarrow \textbf{Code} 
 
 ---
 
+## Evidence
+
+[`evidence/`](evidence/README.md) runs the whole workflow (problem → data → EDA → modeling → deployment → report and deck) on three public datasets with a real model and a scripted user, and logs the transcripts and artifacts of each run.
+
+---
+
 ## Starting a New Project from This Template
 
 **Prerequisite:** Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you don't have it yet (no pre-installed Python needed):

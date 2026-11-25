@@ -1,0 +1,10 @@
+# Text multiclass classification, sparse features, FastAPI deployment.
+name = "newsgroups-topics"
+problem = "classify forum posts into one of four topics so they can be routed automatically."
+data_source = "the 20 Newsgroups dataset restricted to `rec.autos`, `sci.med`, `comp.graphics` and `talk.politics.misc`, with headers, footers and quotes removed (`sklearn.datasets.fetch_20newsgroups`)"
+target = "the newsgroup category"
+metric = "macro F1"
+baseline = "predicting the majority class, then TF-IDF with logistic regression"
+app = "a FastAPI service with a `POST /classify` endpoint that takes a text and returns the predicted topic and the class probabilities"
+audience = "the community product team"
+deck_name = "newsgroups-findings"

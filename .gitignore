@@ -19,3 +19,6 @@ __pycache__/
 # Heavy local data & serialized model artifacts
 data/
 models/
+
+# Evidence runs: keep the bundles, not the raw agent logs
+evidence/runs/*/*/raw/

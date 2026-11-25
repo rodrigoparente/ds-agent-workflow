@@ -1,0 +1,75 @@
+# The six stages every scenario goes through. {placeholders} come from scenarios/<name>.toml.
+#
+# Prompts are written the way a user would talk (no skill names), so routing is part of the test.
+# `replies` are the scripted user answers sent after the agent's first turn, in order.
+# `execute`: after the stage, the runner does the "Run (User)" step (uv sync + execute notebooks).
+# `pytest`:  the runner also runs the test suite.
+# `expect`:  globs (relative to the workspace) that must exist once the stage is done.
+
+[[stages]]
+id = "problem"
+prompt = """I want to {problem} Success is measured by {metric}. Help me define the problem, \
+what we will measure and the baseline to beat, before we touch any data. \
+Call this initiative `framing`."""
+replies = [
+  "Use your recommended option for any open question.",
+  "Approved. Finalize the spec and stop here; no code yet.",
+]
+expect = ["specs/*framing*.md"]
+
+[[stages]]
+id = "data"
+prompt = """Next, collect the data: {data_source}. Cache it locally and check the basics: shape, \
+the target ({target}), dtypes, missing values, duplicates, and anything that could break the \
+next steps. Call this initiative `data`."""
+replies = [
+  "Use your recommended option for any open question.",
+  "Approved. You can add the dependencies you need; I will run `uv sync` and the notebook myself.",
+]
+expect = ["specs/*data*.md", "notebooks/py/*data*.py", "data/*"]
+execute = true
+
+[[stages]]
+id = "eda"
+prompt = """Let's explore the data. I want to understand the target ({target}), the main \
+features, how they relate to the target, data quality problems, and anything risky for modeling \
+(leakage, imbalance, outliers). Call this initiative `eda`."""
+replies = [
+  "Use your recommended option for any open question.",
+  "Approved. I will run the notebook myself.",
+]
+expect = ["specs/*eda*.md", "notebooks/py/*eda*.py", "docs/figures/*eda*.png"]
+execute = true
+
+[[stages]]
+id = "modeling"
+prompt = """Now the modeling. Start from this baseline: {baseline}. Then try a few better models \
+and compare them on {metric} with a proper split and no leakage. Keep it simple, and save the \
+best model to the models folder. Call this initiative `modeling`."""
+replies = [
+  "Use your recommended option for any open question.",
+  "Approved. I will run the notebook myself.",
+]
+expect = ["specs/*modeling*.md", "notebooks/py/*modeling*.py", "models/*"]
+execute = true
+
+[[stages]]
+id = "deployment"
+prompt = """Turn the best model into {app}. Load the model saved in the modeling step, keep the \
+logic in `scripts/` and the app thin, and add tests. Call this initiative `deployment`."""
+replies = [
+  "Use your recommended option for any open question.",
+  "Approved. You can add the dependencies you need; I will run `uv sync` and the tests myself.",
+]
+expect = ["specs/*deployment*.md", "apps/*", "tests/test_*.py"]
+pytest = true
+
+[[stages]]
+id = "communicate"
+prompt = "Write the report for the modeling results."
+replies = [
+  "Now build a slide deck from it for {audience}: about 10 minutes, in English, auto mode. Name the deck `{deck_name}`.",
+  "Use your recommended option for any open question. If you showed me an outline, it is approved; build the deck.",
+  "The deck looks good. No PDF needed.",
+]
+expect = ["docs/reports/*.md", "docs/presentations/*/*.pptx"]

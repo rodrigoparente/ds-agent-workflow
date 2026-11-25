@@ -1,0 +1,10 @@
+# Tabular binary classification, mixed numeric/categorical features, FastAPI deployment.
+name = "adult-income"
+problem = "predict whether a person earns more than 50K a year from census attributes."
+data_source = "the Adult census dataset (OpenML name `adult`, version 2, loaded with `sklearn.datasets.fetch_openml`)"
+target = "class"
+metric = "ROC AUC (with F1 reported at the chosen threshold)"
+baseline = "a logistic regression on a simple preprocessing pipeline"
+app = "a FastAPI service with a `POST /predict` endpoint that takes one person's attributes as JSON and returns the probability and the predicted bracket"
+audience = "the analytics leadership team"
+deck_name = "adult-income-findings"
